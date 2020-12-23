@@ -84,10 +84,13 @@ void cwavSetVAToPACallback(vaToPaCallback_t callback) {
         cwavCurrentVAPAConvCallback = osConvertVirtToPhys;
 }
 
-CWAV* cwavLoadFromFile(char* filename) {
+CWAV* cwavLoadFromFile(const char* filename) {
 
     CWAV* out = malloc(sizeof(CWAV));
     cwav_t* cwav = malloc(sizeof(cwav_t));
+
+    out->monoPan = 0.f;
+    out->volume = 1.f;
     out->cwav = cwav;
 
     FILE* file = fopen(filename, "rb");
@@ -131,6 +134,9 @@ CWAV* cwavLoadFromFile(char* filename) {
 
     cwav->playingchanids = (int*)malloc(cwav->channelcount * 4);
     for (int i = 0; i < cwav->channelcount; i++) cwav->playingchanids[i] = -1;
+
+    out->numChannels = cwav->channelcount;
+    out->isLooped = cwav->cwavInfo->isLooped;
 
     out->loadStatus = CWAV_SUCCESS;
     return out;

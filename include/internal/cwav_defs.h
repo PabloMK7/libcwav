@@ -125,7 +125,7 @@ typedef struct cwav_s {
     cwavDataBlock_t* cwavData;
     cwavchannelInfo_t** channelInfos;
     cwavIMAADPCMInfo_t** IMAADPCMInfos;
-    u32 channelcount;
     int* playingchanids;
+    u8 channelcount;
 } cwav_t;
 #endif

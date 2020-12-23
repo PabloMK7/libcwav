@@ -1,6 +1,8 @@
 # libcwav
 A library for playing **(b)cwav** files on the **3DS**.
 
+**NOTE:** Still in early development, expect many bugs and possible breakign changes until this notice is removed!
+
 # Description
 The goal of this library is to provide an interface for playing **(b)cwav** files in 3ds homebrew sofware. The way it is designed allows to play these files in non-application environments, such as *3GX game plugins* or *applets*, as it provides support for the **CSND** system service.
 
@@ -41,7 +43,8 @@ This system service is used by normal applications, implemented as **NDSP** in l
 2. Clone or download the repo and open a command prompt.
 3. Run `make install` and confirm there aren't any errors.
 4. In your project makefile, add the following to the `LIBDIRS` line (or similar): `$(DEVKITPRO)/libcwav`
-5. Add `#include "cwav.h"` in your source files to use the library.
+5. In your project makefile, add the following to the `LIBS` line (or similar): `-lcwav` if the already listed libraries start with `-l` or just `cwav` if they don't.
+6. Add `#include "cwav.h"` in your source files to use the library.
 
 You can check all the available function calls in the documentation provided in [cwav.h](include/cwav.h).
 

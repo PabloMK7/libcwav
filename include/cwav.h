@@ -1,6 +1,13 @@
-#ifndef CWAV_H
-#define CWAV_H
+/**
+ * @file cwav.h
+ * @brief libcwav - Library to play (b)cwav files on the 3DS.
+*/
+#pragma once
 #include "3ds.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /// Posible status values.
 typedef enum {
@@ -16,7 +23,11 @@ typedef enum {
 /// CWAV structure
 typedef struct CWAV_s {
     void* cwav; ///< Pointer to internal cwav data, must not be used.
-    u32 loadStatus; ///< Value from the cwavLoadStatus_t enum. Set when the CWAV is loaded.
+    u32 loadStatus; ///< Value from the cwavLoadStatus_t enum. Set when the CWAV is loaded. 
+    float monoPan; ///< Value in the range [-1.0, 1.0]. -1.0 for left ear and 1.0 for right ear. Only used if played in mono. Default: 0.0
+    float volume; ///< Value in the range [0.0, 1.0]. 0.0 muted and 1.0 full volume. Default: 1.0
+    u8 numChannels; ///< Number of CWAV channels stored in the file.
+    u8 isLooped; ///< Whether the file is looped or not.
 } CWAV;
 
 /// vAddr to pAddr conversion callback definition.
@@ -39,7 +50,7 @@ void cwavSetVAToPACallback(vaToPaCallback_t callback);
  * Use the loadStatus struct member to determine if the load was successful.
  * Wether the load was successful or not, cwavFree must be always called to clean up and free the memory.
  */
-CWAV* cwavLoadFromFile(char* filename);
+CWAV* cwavLoadFromFile(const char* filename);
 
 /**
  * @brief Plays the specified channels in the bcwav file.
@@ -70,4 +81,6 @@ void cwavStop(CWAV* cwav, int leftChannel, int rightChannel);
 */
 void cwavFree(CWAV* cwav);
 
+#ifdef __cplusplus
+}
 #endif
