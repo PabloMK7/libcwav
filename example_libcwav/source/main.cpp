@@ -15,24 +15,62 @@ void updateScreens() {
 		gspWaitForVBlank();
 }
 
-const char* fileList[] = {
+const char* fileBufferList[] = {
 	"romfs:/beep_ima_adpcm.bcwav",
 	"romfs:/bwooh_ima_adpcm.bcwav",
+};
+
+const char* fileList[] = {
 	"romfs:/meow_ima_adpcm.bcwav",
 	"romfs:/bell_stereo_ima_adpcm.bcwav",
 	"romfs:/loop_ima_adpcm.bcwav",
 };
 
-std::vector<std::tuple<std::string, CWAV*>> cwavList;
+const u8 maxSPlayList[] = {
+	3,
+	3,
+	3,
+	4,
+	1
+};
+
+std::vector<std::tuple<std::string, CWAV*, void*>> cwavList;
 
 void populateCwavList() {
+	
+	for (u32 i = 0; i < sizeof(fileBufferList) / sizeof(char*); i++) {
+		
+		FILE* file = fopen(fileBufferList[i], "rb");
+		if (!file)
+			continue;
+
+		fseek(file, 0, SEEK_END);
+		u32 fileSize = ftell(file);
+		void* buffer = linearAlloc(fileSize);
+		if (!buffer)
+			svcBreak(USERBREAK_PANIC);
+
+		fseek(file, 0, SEEK_SET); 
+		fread(buffer, 1, fileSize, file);
+		fclose(file);
+
+		CWAV* cwav = cwavLoadFromBuffer(buffer, maxSPlayList[i]);
+
+		if (cwav->loadStatus == CWAV_SUCCESS) {
+			cwavList.push_back(std::make_tuple(std::string(fileBufferList[i]).replace(0, 5, "buffer"), cwav, buffer));
+		} else {
+			cwavFree(cwav);
+			linearFree(buffer);
+		}
+	}
+
 	for (u32 i = 0; i < sizeof(fileList) / sizeof(char*); i++) {
 
-		CWAV* cwav = cwavLoadFromFile(fileList[i]);
+		CWAV* cwav = cwavLoadFromFile(fileList[i], maxSPlayList[i + sizeof(fileBufferList) / sizeof(char*)]);
 
 		if (cwav->loadStatus == CWAV_SUCCESS) {
 
-			cwavList.push_back(std::make_tuple(fileList[i], cwav));
+			cwavList.push_back(std::make_tuple(fileList[i], cwav, nullptr));
 
 		} else {
 
@@ -43,8 +81,12 @@ void populateCwavList() {
 }
 
 void freeCwavList() {
-	for (auto it = cwavList.begin(); it != cwavList.end(); it++)
+	for (auto it = cwavList.begin(); it != cwavList.end(); it++) {
 		cwavFree(std::get<1>(*it));
+		void* buffer = std::get<2>(*it);
+		if (buffer)
+			linearFree(buffer);
+	}
 }
 
 int main(int argc, char **argv)
@@ -55,6 +97,7 @@ int main(int argc, char **argv)
 	gfxInitDefault();
 	csndInit();
 	romfsInit();
+	cwavDoAptHook();
 
 	consoleInit(GFX_TOP, NULL);
 	populateCwavList();
