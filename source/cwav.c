@@ -112,8 +112,8 @@ static u32 cwav_parseInfoBlock(cwav_t* cwav) {
     cwav->channelcount = cwav->cwavInfo->channelInfoRefs.count;
 
     u32 encoding = cwav->cwavInfo->encoding;
-    if (encoding != IMA_ADPCM)
-        return CWAV_UNSUPPORTED_AUDIO_ENCODING; //Only IMA ADPCM supported for now
+    if (encoding != IMA_ADPCM && encoding != PCM8 && encoding != PCM16)
+        return CWAV_UNSUPPORTED_AUDIO_ENCODING; //Only IMA ADPCM and PCM8/16 supported for now
     
     cwav->channelInfos = (cwavchannelInfo_t**)malloc(4 * cwav->channelcount);
 
@@ -125,13 +125,13 @@ static u32 cwav_parseInfoBlock(cwav_t* cwav) {
         cwav->channelInfos[i] = (cwavchannelInfo_t*)((u8*)(&(cwav->cwavInfo->channelInfoRefs.count)) + currRef->offset);
         if (cwav->channelInfos[i]->samples.refType != SAMPLE_DATA) return CWAV_INVAID_INFO_BLOCK;
     }
-
-    cwav->IMAADPCMInfos = (cwavIMAADPCMInfo_t**)malloc(4 * cwav->channelcount);
-    for (int i = 0; i < cwav->channelcount; i++) {
-        if (cwav->channelInfos[i]->ADPCMInfo.refType != IMA_ADPCM_INFO) return CWAV_INVAID_INFO_BLOCK;
-        cwav->IMAADPCMInfos[i] = (cwavIMAADPCMInfo_t*)(cwav->channelInfos[i]->ADPCMInfo.offset + (u8*)(&(cwav->channelInfos[i]->samples)));
+    if (encoding == IMA_ADPCM) {
+        cwav->IMAADPCMInfos = (cwavIMAADPCMInfo_t**)malloc(4 * cwav->channelcount);
+        for (int i = 0; i < cwav->channelcount; i++) {
+            if (cwav->channelInfos[i]->ADPCMInfo.refType != IMA_ADPCM_INFO) return CWAV_INVAID_INFO_BLOCK;
+            cwav->IMAADPCMInfos[i] = (cwavIMAADPCMInfo_t*)(cwav->channelInfos[i]->ADPCMInfo.offset + (u8*)(&(cwav->channelInfos[i]->samples)));
+        }
     }
-
     return CWAV_SUCCESS;
 }
 
@@ -338,21 +338,55 @@ bool cwavPlay(CWAV* cwav, int leftChannel, int rightChannel) {
 
         u8* block0 = NULL;
         u8* block1 = NULL;
-        u32 size;
+        u32 size = 0;
+        u32 encoding = cwav_->cwavInfo->encoding;
+        u32 encFlag = 0;
 
         block0 = (u8*)((u32)cwav_->channelInfos[i ? rightChannel : leftChannel]->samples.offset + (u8*)(&(cwav_->cwavData->data)));
-        size = (cwav_->cwavInfo->LoopEnd / 2);
 
-        CSND_SetAdpcmState(cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel], 0, cwav_->IMAADPCMInfos[i ? rightChannel : leftChannel]->context.data, cwav_->IMAADPCMInfos[i ? rightChannel : leftChannel]->context.tableIndex);
+        switch (encoding)
+        {
+        case IMA_ADPCM:
+            encFlag = SOUND_FORMAT_ADPCM;
+            size = (cwav_->cwavInfo->LoopEnd / 2);
+
+            CSND_SetAdpcmState(cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel], 0, cwav_->IMAADPCMInfos[i ? rightChannel : leftChannel]->context.data, cwav_->IMAADPCMInfos[i ? rightChannel : leftChannel]->context.tableIndex);
+
+            if (cwav_->cwavInfo->isLooped) {
+                block1 = ((cwav_->cwavInfo->loopStart) / 2) + block0;
+                CSND_SetAdpcmState(cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel], 1, cwav_->IMAADPCMInfos[i ? rightChannel : leftChannel]->loopContext.data, cwav_->IMAADPCMInfos[i ? rightChannel : leftChannel]->loopContext.tableIndex);
+            } else {
+                block1 = block0;
+                CSND_SetAdpcmState(cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel], 1, cwav_->IMAADPCMInfos[i ? rightChannel : leftChannel]->context.data, cwav_->IMAADPCMInfos[i ? rightChannel : leftChannel]->context.tableIndex);
+            }
+            
+            break;
+        case PCM8:
+            encFlag = SOUND_FORMAT_8BIT;
+
+            size = (cwav_->cwavInfo->LoopEnd);
+            if (cwav_->cwavInfo->isLooped) {
+                block1 = (cwav_->cwavInfo->loopStart) + block0;
+            } else {
+                block1 = block0;
+            }
+
+            break;
+        case PCM16:
+            encFlag = SOUND_FORMAT_16BIT;
+
+            size = (cwav_->cwavInfo->LoopEnd * 2);
+            if (cwav_->cwavInfo->isLooped) {
+                block1 = ((cwav_->cwavInfo->loopStart) * 2) + block0;
+            } else {
+                block1 = block0;
+            }
+
+            break;
+        default:
+            break;
+        }
         
-        if (cwav_->cwavInfo->isLooped) {
-            block1 = ((cwav_->cwavInfo->loopStart) / 2) + block0;
-            CSND_SetAdpcmState(cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel], 1, cwav_->IMAADPCMInfos[i ? rightChannel : leftChannel]->loopContext.data, cwav_->IMAADPCMInfos[i ? rightChannel : leftChannel]->loopContext.tableIndex);
-        }
-        else {
-            block1 = block0;
-            CSND_SetAdpcmState(cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel], 1, cwav_->IMAADPCMInfos[i ? rightChannel : leftChannel]->context.data, cwav_->IMAADPCMInfos[i ? rightChannel : leftChannel]->context.tableIndex);
-        }
         csndExecCmds(true);
 
         float pan = 0.f;
@@ -369,8 +403,10 @@ bool cwavPlay(CWAV* cwav, int leftChannel, int rightChannel) {
         } else {
             pan = cwav->monoPan;
         }
+        
+        
 
-        csndPlaySoundFixed(cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel], (cwav_->cwavInfo->isLooped ? SOUND_REPEAT : SOUND_ONE_SHOT) | SOUND_FORMAT_ADPCM, cwav_->cwavInfo->sampleRate, volume, pan, block0, block1, size);
+        csndPlaySoundFixed(cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel], (cwav_->cwavInfo->isLooped ? SOUND_REPEAT : SOUND_ONE_SHOT) | encFlag, cwav_->cwavInfo->sampleRate, volume, pan, block0, block1, size);
         csndExecCmds(true);
     }
     return true;

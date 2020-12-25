@@ -12,8 +12,11 @@ Unlike *(b)cstm* files which are streamed in chunks from their storage media, **
 ## Supported CWAV Audio Encodings
 Currently, the following audio encodings are supported (with looping).
 
+### PCM8/PCM16
+Uncompressed **8/16 bit PCM**. Useful if memory usage is not a problem.
+
 ### IMA ADPCM
-Lossy compression format, useful if the available memory is limited.
+Lossy compression format, useful if the available memory is limited. Can only be played with **CSND**.
 
 ## Supported System Services
 Currently, the following system services used to play the audio are supported.
@@ -26,11 +29,8 @@ Use this system service if you want to play audio in *applets* or *3GX game plug
 ## Planned CWAV Audio Encodings
 The following audio encodings are planned (with looping).
 
-### PCM8/PCM16
-Uncompressed **8/16 bit PCM**. Useful if memory usage is not a problem.
-
 ### DSP ADPCM
-Lossy compression format, similar to **IMA ADPCM**.
+Lossy compression format, similar to **IMA ADPCM**. Can only be played with **NDSP**.
 
 ## Planned System Services
 The following system services used to play the audio are planned.

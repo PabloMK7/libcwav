@@ -23,6 +23,8 @@ const char* fileBufferList[] = {
 const char* fileList[] = {
 	"romfs:/meow_ima_adpcm.bcwav",
 	"romfs:/bell_stereo_ima_adpcm.bcwav",
+	"romfs:/loop_pcm8.bcwav",
+	"romfs:/loop_pcm16.bcwav",
 	"romfs:/loop_ima_adpcm.bcwav",
 };
 
@@ -31,6 +33,8 @@ const u8 maxSPlayList[] = {
 	3,
 	3,
 	4,
+	1,
+	1,
 	1
 };
 
