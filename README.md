@@ -23,7 +23,7 @@ Currently, the following system services used to play the audio are supported.
 
 ### CSND
 This system service is used by *applets* to play audio. It has the advantage of playing audio on top of running/suspended applications, whitout causing any interferences.
-Use this system service if you want to play audio in *applets* or *3GX game plugins*. Unlike **DSP**, it's the user's responsability to stop the currently playing **(b)cwav**s when the application is suspended or closed.
+Use this system service if you want to play audio in *applets* or *3GX game plugins*. Make sure to use *`cwavDoAptHook()`* or *`cwavNotifyAptEvent()`* to handle apt events (app suspend, sleep or exit)!
 
 # Planned Features
 ## Planned CWAV Audio Encodings
