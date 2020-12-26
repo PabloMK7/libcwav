@@ -21,7 +21,7 @@ const char* fileBufferList[] = {
 };
 
 const char* fileList[] = {
-	"romfs:/meow_ima_adpcm.bcwav",
+	"romfs:/meow_pcm8.bcwav",
 	"romfs:/bell_stereo_ima_adpcm.bcwav",
 	"romfs:/loop_pcm8.bcwav",
 	"romfs:/loop_pcm16.bcwav",
@@ -146,6 +146,23 @@ int main(int argc, char **argv)
 					cwavStatus[currsound] = 1;
 				changed = true;
 			}
+			#ifdef DIRECT_SOUND_IMPLEMENTED
+			if (kdown & KEY_Y) {
+				CSND_DirectSound dirSound;
+				csndInitializeDirectSound(&dirSound);
+
+				dirSound.soundModifiers.forceSpeakerOutput = 1;
+				dirSound.soundModifiers.ignoreVolumeSlider = 1;
+				dirSound.soundModifiers.playOnSleep = 1;
+
+				CWAV* cwav = std::get<1>(cwavList[currsound]);
+				if (cwav->numChannels == 2) {
+					cwavPlayAsDirectSound(cwav, 0, 1, &dirSound.soundModifiers);
+				} else {
+					cwavPlayAsDirectSound(cwav, 0, -1, &dirSound.soundModifiers);
+				}
+			}
+			#endif
 			if (kdown & KEY_B) {
 				CWAV* cwav = std::get<1>(cwavList[currsound]);
 				if (cwav->numChannels == 2) {

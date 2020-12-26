@@ -85,6 +85,21 @@ CWAV* cwavLoadFromFile(const char* filename, u8 maxSPlays);
  */
 CWAV* cwavLoadFromBuffer(void* fileBuffer, u8 maxSPlays);
 
+#define DIRECT_SOUND_IMPLEMENTED
+#ifdef DIRECT_SOUND_IMPLEMENTED
+/**
+ * @brief Plays the CWAV channels as a direct sound (only available if using CSND).
+ * @param cwav The CWAV to play.
+ * @param leftChannel The CWAV channel to play on the left ear.
+ * @param rigtChannel The CWAV channel to play on the right ear.
+ * @param soundModifiers CSND direct sound modifiers to apply to the sound.
+ * 
+ * To play a single channel in mono for both ears, set rightChannel to -1.
+ * The individual channel volumes are multiplied by the CWAV volume.
+*/
+bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, CSND_DirectSoundModifiers* soundModifiers);
+#endif
+
 /**
  * @brief Plays the specified channels in the bcwav file.
  * @param cwav The CWAV to play.

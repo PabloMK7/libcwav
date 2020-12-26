@@ -297,6 +297,72 @@ CWAV* cwavLoadFromBuffer(void* fileBuffer, u8 maxSPlays) {
     return out;
 }
 
+#ifdef DIRECT_SOUND_IMPLEMENTED
+bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, CSND_DirectSoundModifiers* soundModifiers) {
+    if (!cwav) return false;
+    cwav_t* cwav_ = CWAVTOIMPL(cwav);
+    CSND_DirectSound dirSound;
+
+    csndInitializeDirectSound(&dirSound);
+
+    u32 channelCount = 0;
+    if (leftChannel >= 0 && leftChannel < cwav_->channelcount && rightChannel >= 0 && rightChannel < cwav_->channelcount)
+        channelCount = 2;
+    else if (leftChannel >= 0 && leftChannel < cwav_->channelcount)
+        channelCount = 1;
+    else
+        return false;
+    
+    u32 encoding = cwav_->cwavInfo->encoding;
+    u32 encFlag = 0;
+    u32 size = 0;
+    if (cwav_->cwavInfo->isLooped)
+        return false;
+    
+    u8* leftSampleData = (u8*)((u32)cwav_->channelInfos[leftChannel]->samples.offset + (u8*)(&(cwav_->cwavData->data)));
+    u8* rightSampleData = 0;
+    if (channelCount == 2)
+        rightSampleData = (u8*)((u32)cwav_->channelInfos[rightChannel]->samples.offset + (u8*)(&(cwav_->cwavData->data)));
+
+    switch (encoding)
+    {
+    case IMA_ADPCM:
+        encFlag = CSND_ENCODING_ADPCM;
+        size = (cwav_->cwavInfo->LoopEnd / 2);
+
+        memcpy(&dirSound.channelData.adpcmContext[0], &cwav_->IMAADPCMInfos[leftChannel]->context, sizeof(CSND_DirectSoundIMAADPCMContext));
+        if (channelCount == 2)
+            memcpy(&dirSound.channelData.adpcmContext[1], &cwav_->IMAADPCMInfos[rightChannel]->context, sizeof(CSND_DirectSoundIMAADPCMContext));
+        
+        break;
+    case PCM8:
+        encFlag = CSND_ENCODING_PCM8;
+        size = (cwav_->cwavInfo->LoopEnd);
+        break;
+    case PCM16:
+        encFlag = CSND_ENCODING_PCM16;
+        size = (cwav_->cwavInfo->LoopEnd * 2);
+        break;
+    default:
+        break;
+    }
+
+    soundModifiers->channelVolumes[0] = soundModifiers->channelVolumes[0] * cwav->volume;
+    soundModifiers->channelVolumes[1] = soundModifiers->channelVolumes[1] * cwav->volume;
+
+    memcpy(&dirSound.soundModifiers, soundModifiers, sizeof(CSND_DirectSoundModifiers));
+
+    dirSound.channelData.channelAmount = channelCount;
+    dirSound.channelData.channelEncoding = encFlag;
+    dirSound.channelData.sampleRate = cwav_->cwavInfo->sampleRate;
+    dirSound.channelData.sampleDataLength = size;
+    if (leftSampleData) dirSound.channelData.sampleData[0] = (void*)cwavCurrentVAPAConvCallback(leftSampleData);
+    if (rightSampleData) dirSound.channelData.sampleData[1] = (void*)cwavCurrentVAPAConvCallback(rightSampleData);
+
+    return R_SUCCEEDED(csndPlayDirectSound(&dirSound, false));
+}
+#endif
+
 bool cwavPlay(CWAV* cwav, int leftChannel, int rightChannel) {
     if (!cwav) return false;
     cwav_t* cwav_ = CWAVTOIMPL(cwav);
