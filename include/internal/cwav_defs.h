@@ -129,6 +129,5 @@ typedef struct cwav_s {
     u8 channelcount;
     u8 totalMultiplePlay;
     u8 currMultiplePlay;
-    u8 comesFromFile;
 } cwav_t;
 #endif

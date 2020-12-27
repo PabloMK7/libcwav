@@ -15,12 +15,9 @@ void updateScreens() {
 		gspWaitForVBlank();
 }
 
-const char* fileBufferList[] = {
+const char* fileList[] = {
 	"romfs:/beep_ima_adpcm.bcwav",
 	"romfs:/bwooh_ima_adpcm.bcwav",
-};
-
-const char* fileList[] = {
 	"romfs:/meow_pcm8.bcwav",
 	"romfs:/bell_stereo_ima_adpcm.bcwav",
 	"romfs:/loop_pcm8.bcwav",
@@ -42,9 +39,9 @@ std::vector<std::tuple<std::string, CWAV*, void*>> cwavList;
 
 void populateCwavList() {
 	
-	for (u32 i = 0; i < sizeof(fileBufferList) / sizeof(char*); i++) {
+	for (u32 i = 0; i < sizeof(fileList) / sizeof(char*); i++) {
 		
-		FILE* file = fopen(fileBufferList[i], "rb");
+		FILE* file = fopen(fileList[i], "rb");
 		if (!file)
 			continue;
 
@@ -58,28 +55,14 @@ void populateCwavList() {
 		fread(buffer, 1, fileSize, file);
 		fclose(file);
 
-		CWAV* cwav = cwavLoadFromBuffer(buffer, maxSPlayList[i]);
+		CWAV* cwav = (CWAV*)malloc(sizeof(CWAV));
+		cwavLoad(cwav, buffer, maxSPlayList[i]);
 
 		if (cwav->loadStatus == CWAV_SUCCESS) {
-			cwavList.push_back(std::make_tuple(std::string(fileBufferList[i]).replace(0, 5, "buffer"), cwav, buffer));
+			cwavList.push_back(std::make_tuple(std::string(fileList[i]), cwav, buffer));
 		} else {
 			cwavFree(cwav);
 			linearFree(buffer);
-		}
-	}
-
-	for (u32 i = 0; i < sizeof(fileList) / sizeof(char*); i++) {
-
-		CWAV* cwav = cwavLoadFromFile(fileList[i], maxSPlayList[i + sizeof(fileBufferList) / sizeof(char*)]);
-
-		if (cwav->loadStatus == CWAV_SUCCESS) {
-
-			cwavList.push_back(std::make_tuple(fileList[i], cwav, nullptr));
-
-		} else {
-
-			cwavFree(cwav);
-
 		}
 	}
 }
@@ -87,6 +70,7 @@ void populateCwavList() {
 void freeCwavList() {
 	for (auto it = cwavList.begin(); it != cwavList.end(); it++) {
 		cwavFree(std::get<1>(*it));
+		free(std::get<1>(*it));
 		void* buffer = std::get<2>(*it);
 		if (buffer)
 			linearFree(buffer);

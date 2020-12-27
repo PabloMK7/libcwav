@@ -152,8 +152,8 @@ static void cwav_initialize(CWAV* out, u8 maxSPlays) {
         return;
     }
 
-    u32 ret = cwav_parseInfoBlock(cwav); 
-    if (ret) {
+    cwavLoadStatus_t ret = cwav_parseInfoBlock(cwav); 
+    if (ret != CWAV_SUCCESS) {
         out->loadStatus = ret;
         return;
     }
@@ -185,20 +185,20 @@ static void cwav_stopImpl(cwav_t* cwav, int leftChannel, int rightChannel, u8 mu
     if (multipleID > cwav->totalMultiplePlay)
         return;
 
-    if (leftChannel >= 0 && leftChannel < cwav->channelcount) {
+    if (leftChannel >= 0 && leftChannel < (int)cwav->channelcount) {
         if (cwav->playingChanIds[multipleID][leftChannel] != -1) {
             CSND_SetPlayState(cwav->playingChanIds[multipleID][leftChannel], 0);
             cwav->playingChanIds[multipleID][leftChannel] = -1;
         }
     }
-    if (rightChannel >= 0 && rightChannel < cwav->channelcount) {
+    if (rightChannel >= 0 && rightChannel < (int)cwav->channelcount) {
         if (cwav->playingChanIds[multipleID][rightChannel] != -1) {
             CSND_SetPlayState(cwav->playingChanIds[multipleID][rightChannel], 0);
             cwav->playingChanIds[multipleID][rightChannel] = -1;
         }
     }
     if (leftChannel < 0 && rightChannel < 0) {
-        for (int i = 0; i < cwav->channelcount; i++) {
+        for (u32 i = 0; i < cwav->channelcount; i++) {
             if (cwav->playingChanIds[multipleID][i] != -1) {
                 CSND_SetPlayState(cwav->playingChanIds[multipleID][i], 0);
                 cwav->playingChanIds[multipleID][i] = -1;
@@ -242,73 +242,55 @@ void cwavSetVAToPACallback(vaToPaCallback_t callback) {
         cwavCurrentVAPAConvCallback = cwav_defaultVAToPA;
 }
 
-CWAV* cwavLoadFromFile(const char* filename, u8 maxSPlays) {
-    CWAV* out = malloc(sizeof(CWAV));
+void cwavLoad(CWAV* out, const void* bcwavFileBuffer, u8 maxSPlays) {
+    if (!out) return;
     cwav_t* cwav = malloc(sizeof(cwav_t));
     out->cwav = cwav;
     memset(cwav, 0, sizeof(cwav_t));
 
-    cwav->comesFromFile = 1;
-
-    if (filename == NULL) {
+    if (bcwavFileBuffer == NULL) {
         out->loadStatus = CWAV_INVALID_ARGUMENT;
-        return out;
+        return;
     }
 
-    FILE* file = fopen(filename, "rb");
-    if (!file) {
-        out->loadStatus = CWAV_FILE_OPEN_FAILED;
-        return out;
-    }
-
-    fseek(file, 0, SEEK_END);
-    u32 fileSize = ftell(file);
-    cwav->fileBuf = linearAlloc(fileSize);
-    if (!cwav->fileBuf) {
-        fclose(file);
-        out->loadStatus = CWAV_FILE_TOO_LARGE;
-        return out;
-    }
-
-    fseek(file, 0, SEEK_SET); 
-    fread(cwav->fileBuf, 1, fileSize, file);
-    fclose(file);
+    cwav->fileBuf = (void*)bcwavFileBuffer;
 
     cwav_initialize(out, maxSPlays);
-    return out;
 }
 
-CWAV* cwavLoadFromBuffer(void* fileBuffer, u8 maxSPlays) {
-    CWAV* out = malloc(sizeof(CWAV));
-    cwav_t* cwav = malloc(sizeof(cwav_t));
-    out->cwav = cwav;
-    memset(cwav, 0, sizeof(cwav_t));
+void cwavFree(CWAV* cwav) {
+    if (!cwav) return;
+    cwav_t* cwav_ = CWAVTOIMPL(cwav);
+    if (cwav_) {
+        if (cwav->loadStatus == CWAV_SUCCESS) {
+            cwavStop(cwav, -1, -1);
+            cwav_DeRegister(cwav);
 
-    cwav->comesFromFile = 0;
-
-    if (fileBuffer == NULL) {
-        out->loadStatus = CWAV_INVALID_ARGUMENT;
-        return out;
+            for (int i = 0; i < cwav_->totalMultiplePlay; i++)
+                free(cwav_->playingChanIds[i]);
+            
+            free(cwav_->playingChanIds);
+        }
+        if (cwav_->channelInfos) free(cwav_->channelInfos);
+        if (cwav_->IMAADPCMInfos) free(cwav_->IMAADPCMInfos);
+        free(cwav_);
+        cwav_ = NULL;
     }
-
-    cwav->fileBuf = fileBuffer;
-
-    cwav_initialize(out, maxSPlays);
-    return out;
+    cwav->loadStatus = CWAV_NOT_ALLOCATED;
 }
 
 #ifdef DIRECT_SOUND_IMPLEMENTED
 bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, CSND_DirectSoundModifiers* soundModifiers) {
-    if (!cwav) return false;
+    if (!cwav || cwav->loadStatus != CWAV_SUCCESS) return false;
     cwav_t* cwav_ = CWAVTOIMPL(cwav);
     CSND_DirectSound dirSound;
 
     csndInitializeDirectSound(&dirSound);
 
     u32 channelCount = 0;
-    if (leftChannel >= 0 && leftChannel < cwav_->channelcount && rightChannel >= 0 && rightChannel < cwav_->channelcount)
+    if (leftChannel >= 0 && leftChannel < (int)cwav_->channelcount && rightChannel >= 0 && rightChannel < (int)cwav_->channelcount)
         channelCount = 2;
-    else if (leftChannel >= 0 && leftChannel < cwav_->channelcount)
+    else if (leftChannel >= 0 && leftChannel < (int)cwav_->channelcount)
         channelCount = 1;
     else
         return false;
@@ -364,7 +346,7 @@ bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, CSND_D
 #endif
 
 bool cwavPlay(CWAV* cwav, int leftChannel, int rightChannel) {
-    if (!cwav) return false;
+    if (!cwav || cwav->loadStatus != CWAV_SUCCESS) return false;
     cwav_t* cwav_ = CWAVTOIMPL(cwav);
 
     bool stereo = true;
@@ -479,26 +461,8 @@ bool cwavPlay(CWAV* cwav, int leftChannel, int rightChannel) {
 }
 
 void cwavStop(CWAV* cwav, int leftChannel, int rightChannel) {
+    if (!cwav || cwav->loadStatus != CWAV_SUCCESS) return;
     cwav_t* cwav_ = CWAVTOIMPL(cwav);
     for (int i = 0; i < cwav_->totalMultiplePlay; i++)
         cwav_stopImpl(cwav_, leftChannel, rightChannel, i);
-}
-
-void cwavFree(CWAV* cwav) {
-    if (!cwav) return;
-    cwav_t* cwav_ = CWAVTOIMPL(cwav);
-    if (cwav->loadStatus == CWAV_SUCCESS) {
-        cwavStop(cwav, -1, -1);
-        cwav_DeRegister(cwav);
-
-        for (int i = 0; i < cwav_->totalMultiplePlay; i++)
-            free(cwav_->playingChanIds[i]);
-        
-        free(cwav_->playingChanIds);
-    }
-    if (cwav_->comesFromFile && cwav_->fileBuf) linearFree(cwav_->fileBuf);
-    if (cwav_->channelInfos) free(cwav_->channelInfos);
-    if (cwav_->IMAADPCMInfos) free(cwav_->IMAADPCMInfos);
-    free(cwav_);
-    free(cwav);
 }
