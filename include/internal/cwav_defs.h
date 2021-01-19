@@ -1,10 +1,11 @@
 #ifndef CWAVDEFS_H
 #define CWAVDEFS_H
-#include "3ds.h"
+#include "3ds/types.h"
 
 // Thanks https://www.3dbrew.org/wiki/BCWAV
 
-typedef enum {
+typedef enum
+{
     DSP_ADPCM_INFO = 0x300,
     IMA_ADPCM_INFO = 0x301,
     SAMPLE_DATA = 0x1F00,
@@ -13,7 +14,8 @@ typedef enum {
     CHANNEL_INFO = 0x7100
 } cwavReferenceType_t;
 
-typedef enum {
+typedef enum
+{
     PCM8,
     PCM16,
     DSP_ADPCM,
@@ -42,8 +44,8 @@ typedef struct cwavBlockHeader_s
 typedef struct cwavReferenceTable_s
 {
     u32 count;
-    cwavReference_t references[]; //Variable size!
-}cwavReferenceTable_t;
+    cwavReference_t references[];
+} cwavReferenceTable_t;
 
 typedef struct cwavchannelInfo_s
 {
@@ -59,8 +61,7 @@ typedef struct cwavDSPADPCMParam_s
 
 typedef struct cwavDSPADPCMContext_s
 {
-    u8 predScale;
-    u8 reserved;
+    u16 predScale;
     u16 prevSample;
     u16 secondPrevSample;
 } cwavDSPADPCMContext_t;
@@ -71,7 +72,7 @@ typedef struct cwavDSPADPCMInfo_s
     cwavDSPADPCMContext_t context;
     cwavDSPADPCMContext_t loopContext;
     u16 padding;
-}cwavDSPADPCMInfo_t;
+} cwavDSPADPCMInfo_t;
 
 typedef struct cwavIMAADPCMContext_s
 {
@@ -97,7 +98,7 @@ typedef struct cwavInfoBlock_s
     u32 LoopEnd;
     u32 reserved;
     cwavReferenceTable_t channelInfoRefs;
-}cwavInfoBlock_t;
+} cwavInfoBlock_t;
 
 typedef struct cwavDataBlock_s
 {
@@ -118,13 +119,15 @@ typedef struct  cwavHeader_s
     cwavSizedReference_t data_blck;
 } cwavHeader_t;
 
-typedef struct cwav_s {
+typedef struct cwav_s
+{
     void* fileBuf;
     cwavHeader_t* cwavHeader;
     cwavInfoBlock_t* cwavInfo;
     cwavDataBlock_t* cwavData;
     cwavchannelInfo_t** channelInfos;
     cwavIMAADPCMInfo_t** IMAADPCMInfos;
+    cwavDSPADPCMInfo_t** DSPADPCMInfos;
     int** playingChanIds;
     u8 channelcount;
     u8 totalMultiplePlay;

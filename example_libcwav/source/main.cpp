@@ -7,7 +7,8 @@
 
 #include <cwav.h>
 
-void updateScreens() {
+void updateScreens()
+{
 		// Flush and swap framebuffers
 		gfxFlushBuffers();
 		gfxSwapBuffers();
@@ -15,20 +16,24 @@ void updateScreens() {
 		gspWaitForVBlank();
 }
 
-const char* fileList[] = {
-	"romfs:/beep_ima_adpcm.bcwav",
+const char* fileList[] =
+{
+	"romfs:/beep_dsp_adpcm.bcwav",
 	"romfs:/bwooh_ima_adpcm.bcwav",
 	"romfs:/meow_pcm8.bcwav",
 	"romfs:/bell_stereo_ima_adpcm.bcwav",
-	"romfs:/loop_pcm8.bcwav",
+	"romfs:/bell_stereo_dsp_adpcm.bcwav",
 	"romfs:/loop_pcm16.bcwav",
 	"romfs:/loop_ima_adpcm.bcwav",
+	"romfs:/loop_dsp_adpcm.bcwav",
 };
 
-const u8 maxSPlayList[] = {
+const u8 maxSPlayList[] =
+{
 	3,
 	3,
 	3,
+	4,
 	4,
 	1,
 	1,
@@ -37,9 +42,11 @@ const u8 maxSPlayList[] = {
 
 std::vector<std::tuple<std::string, CWAV*, void*>> cwavList;
 
-void populateCwavList() {
+void populateCwavList()
+{
 	
-	for (u32 i = 0; i < sizeof(fileList) / sizeof(char*); i++) {
+	for (u32 i = 0; i < sizeof(fileList) / sizeof(char*); i++)
+	{
 		
 		FILE* file = fopen(fileList[i], "rb");
 		if (!file)
@@ -58,17 +65,22 @@ void populateCwavList() {
 		CWAV* cwav = (CWAV*)malloc(sizeof(CWAV));
 		cwavLoad(cwav, buffer, maxSPlayList[i]);
 
-		if (cwav->loadStatus == CWAV_SUCCESS) {
+		if (cwav->loadStatus == CWAV_SUCCESS)
+		{
 			cwavList.push_back(std::make_tuple(std::string(fileList[i]), cwav, buffer));
-		} else {
+		}
+		else
+		{
 			cwavFree(cwav);
 			linearFree(buffer);
 		}
 	}
 }
 
-void freeCwavList() {
-	for (auto it = cwavList.begin(); it != cwavList.end(); it++) {
+void freeCwavList()
+{
+	for (auto it = cwavList.begin(); it != cwavList.end(); it++)
+	{
 		cwavFree(std::get<1>(*it));
 		free(std::get<1>(*it));
 		void* buffer = std::get<2>(*it);
@@ -83,17 +95,61 @@ int main(int argc, char **argv)
 	std::vector<int> cwavStatus;
 
 	gfxInitDefault();
-	csndInit();
 	romfsInit();
-	cwavDoAptHook();
 
 	consoleInit(GFX_TOP, NULL);
-	populateCwavList();
-	
-	int currsound = 0;
-	bool changed = true;
 
-	if (cwavList.size() != 0)
+	int currsound = 0;
+	cwavEnvMode_t mode = CWAV_ENV_DSP;
+	bool changed = true;
+	bool exit = true;
+
+	while (aptMainLoop())
+	{
+		svcSleepThread(1000000);
+		if (changed)
+		{
+			consoleClear();
+			printf("libcwav example.\n\nPress X to use: CSND.\nPress Y to use: DSP.\n\nPress START to exit.");
+			changed = false;
+		}
+		hidScanInput();
+		u32 kdown = hidKeysDown();
+		if (kdown & KEY_X)
+		{
+			mode = CWAV_ENV_CSND;
+			exit = false;
+			break;
+		}
+		if (kdown & KEY_Y)
+		{
+			mode = CWAV_ENV_DSP;
+			exit = false;
+			break;
+		}
+		if (kdown & KEY_START)
+		{
+			break;
+		}
+	}
+
+	changed = true;
+	if (!exit)
+		cwavUseEnvironment(mode);
+	if (!exit && mode == CWAV_ENV_CSND)
+	{
+		csndInit();
+		cwavDoAptHook();
+	}
+	else if (!exit && mode == CWAV_ENV_DSP)
+	{
+		ndspInit();
+	}
+
+	if (!exit)
+		populateCwavList();
+
+	if (!exit && cwavList.size() != 0)
 	{
 		for (u32 i = 0; i < cwavList.size(); i++) 
 			cwavStatus.push_back(0);
@@ -102,28 +158,37 @@ int main(int argc, char **argv)
 		while (aptMainLoop())
 		{
 			svcSleepThread(1000000);
-			if (changed) {
+			if (changed)
+			{
 				consoleClear();
 				printf("libcwav example.\n\n|%s| %s\n\nPress A to play the selected sound.\nPress UP/DOWN to change the file.\nPress B to stop the selected file.\n\nPress START to exit.", statusStr[cwavStatus[currsound]], std::get<0>(cwavList[currsound]).c_str());
 				changed = false;
 			}
 			hidScanInput();
 			u32 kdown = hidKeysDown();
-			if (kdown & KEY_UP) {
+			if (kdown & KEY_UP)
+			{
 				currsound++;
-				if (currsound >= (int)cwavList.size()) currsound = 0;
+				if (currsound >= (int)cwavList.size())
+					currsound = 0;
 				changed = true;
 			}
-			if (kdown & KEY_DOWN) {
+			if (kdown & KEY_DOWN)
+			{
 				currsound--;
-				if (currsound < 0) currsound = (int)cwavList.size() - 1;
+				if (currsound < 0)
+					currsound = (int)cwavList.size() - 1;
 				changed = true;
 			}
-			if (kdown & KEY_A) {
+			if (kdown & KEY_A)
+			{
 				CWAV* cwav = std::get<1>(cwavList[currsound]);
-				if (cwav->numChannels == 2) {
+				if (cwav->numChannels == 2)
+				{
 					cwavPlay(cwav, 0, 1);
-				} else {
+				}
+				else
+				{
 					cwavPlay(cwav, 0, -1);
 				}
 				if (cwav->isLooped)
@@ -131,7 +196,8 @@ int main(int argc, char **argv)
 				changed = true;
 			}
 			#ifdef DIRECT_SOUND_IMPLEMENTED
-			if (kdown & KEY_Y) {
+			if (mode == CWAV_ENV_CSND && (kdown & KEY_Y))
+			{
 				CSND_DirectSound dirSound;
 				csndInitializeDirectSound(&dirSound);
 
@@ -140,24 +206,32 @@ int main(int argc, char **argv)
 				dirSound.soundModifiers.playOnSleep = 1;
 
 				CWAV* cwav = std::get<1>(cwavList[currsound]);
-				if (cwav->numChannels == 2) {
+				if (cwav->numChannels == 2)
+				{
 					cwavPlayAsDirectSound(cwav, 0, 1, &dirSound.soundModifiers);
-				} else {
+				}
+				else
+				{
 					cwavPlayAsDirectSound(cwav, 0, -1, &dirSound.soundModifiers);
 				}
 			}
 			#endif
-			if (kdown & KEY_B) {
+			if (kdown & KEY_B)
+			{
 				CWAV* cwav = std::get<1>(cwavList[currsound]);
-				if (cwav->numChannels == 2) {
+				if (cwav->numChannels == 2)
+				{
 					cwavStop(cwav, 0, 1);
-				} else {
+				}
+				else
+				{
 					cwavStop(cwav, 0, -1);
 				}
 				cwavStatus[currsound] = 0;
 				changed = true;
 			}
-			if (kdown & KEY_START) {
+			if (kdown & KEY_START)
+			{
 				break;
 			}
 			updateScreens();
@@ -165,7 +239,10 @@ int main(int argc, char **argv)
 	}
 	freeCwavList();
 	romfsExit();
-	csndExit();
+	if (!exit && mode == CWAV_ENV_CSND)
+		csndExit();
+	else if (!exit && mode == CWAV_ENV_DSP)
+		ndspExit();
 	gfxExit();
 	return 0;
 }

@@ -10,7 +10,8 @@ extern "C" {
 #endif
 
 /// Posible status values.
-typedef enum {
+typedef enum
+{
     CWAV_NOT_ALLOCATED = 0, ///< CWAV is not allocated and cannot be used.
     CWAV_SUCCESS = 1, ///< CWAV loaded properly and is ready to play.
     CWAV_INVALID_ARGUMENT = 2, ///< An invalid argument was passed to the function call.
@@ -23,8 +24,16 @@ typedef enum {
     
 } cwavLoadStatus_t;
 
+/// Possible environments
+typedef enum
+{
+    CWAV_ENV_DSP = 0, // DSP Service, only available for applications.
+    CWAV_ENV_CSND = 1 // CSND Service, only available for applets and 3GX plugins.
+} cwavEnvMode_t;
+
 /// CWAV structure, some values can be read [R] or written [W] to.
-typedef struct CWAV_s {
+typedef struct CWAV_s
+{
     void* cwav; ///< Pointer to internal cwav data, should not be used.
     cwavLoadStatus_t loadStatus; ///< [R] Value from the cwavLoadStatus_t enum. Set when the CWAV is loaded. 
     float monoPan; ///< [RW] Value in the range [-1.0, 1.0]. -1.0 for left ear and 1.0 for right ear. Only used if played in mono. Default: 0.0
@@ -34,10 +43,18 @@ typedef struct CWAV_s {
 } CWAV;
 
 /// vAddr to pAddr conversion callback definition.
-typedef u32(*vaToPaCallback_t)(const void*); 
+typedef u32(*vaToPaCallback_t)(const void*);
 
 /**
- * @brief Hooks to libctru APT implementation to recieve apt events.
+ * @brief Sets the environment that libcwav will use.
+ * 
+ * This call does not initialize the desired service. ndspInit/csndInit should be called before.
+ * By default, DSP is used. Modifying the enviroment after loading the first CWAV causes undefined behaviour.
+*/
+void cwavUseEnvironment(cwavEnvMode_t envMode);
+
+/**
+ * @brief Hooks to libctru APT implementation to recieve apt events. (Required for CSND)
  * 
  * Needs to be used in environments supported by libctru, should not be used with applets nor 3GX game plugins.
  * For unsupported environments, use cwavNotifyAptEvent directly to notify individual events.
@@ -46,7 +63,7 @@ typedef u32(*vaToPaCallback_t)(const void*);
 void cwavDoAptHook();
 
 /**
- * @brief Notifies the lib of an incoming apt event.
+ * @brief Notifies the lib of an incoming apt event. (Required for CSND)
  * @param event The apt event to notify.
  * 
  * Should be used in environments not supported by libctru, such as applets and 3GX game plugins.
@@ -56,7 +73,7 @@ void cwavDoAptHook();
 void cwavNotifyAptEvent(APT_HookType event);
 
 /**
- * @brief Sets a custom virtual address to physical address conversion callback.
+ * @brief Sets a custom virtual address to physical address conversion callback. (Only used for CSND)
  * @param callback Function callback to use.
  * 
  * The function callback must take the virtual address as a const void* argument and return the physical address as a u32.
@@ -81,12 +98,12 @@ void cwavLoad(CWAV* out, const void* bcwavFileBuffer, u8 maxSPlays);
  * @param cwav The CWAV to free.
  * 
  * Must be called even if the CWAV load fails.
- * The bcwavFileBuffer must be manually freed afterwards (e.g.: linearFree()).
+ * The bcwavFileBuffer used in cwavLoad must be manually freed afterwards (e.g.: linearFree()).
  * The CWAV* struct itself must be freed manually if it has been allocated.
 */
 void cwavFree(CWAV* cwav);
 
-#define DIRECT_SOUND_IMPLEMENTED
+//#define DIRECT_SOUND_IMPLEMENTED
 #ifdef DIRECT_SOUND_IMPLEMENTED
 /**
  * @brief Plays the CWAV channels as a direct sound (only available if using CSND).

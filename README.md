@@ -1,16 +1,14 @@
 # libcwav
 A library for playing **(b)cwav** files on the **3DS**.
 
-**NOTE:** Still in early development, expect many bugs and possible breakign changes until this notice is removed!
-
 # Description
 The goal of this library is to provide an interface for playing **(b)cwav** files in 3ds homebrew sofware. The way it is designed allows to play these files in non-application environments, such as *3GX game plugins* or *applets*, as it provides support for the **CSND** system service.
 
-Unlike *(b)cstm* files which are streamed in chunks from their storage media, **(b)cwav** files are fully loaded into the linear RAM. Therefore, **(b)cwav** files are only meant for small sound effects. This library provides support for the **IMA ADPCM** encoding, which heavily reduces the required memory to play the file. 
+Unlike *(b)cstm* files which are streamed in chunks from their storage media, **(b)cwav** files are fully loaded into the linear RAM. Therefore, **(b)cwav** files are only meant for small sound effects. This library provides support for the **ADPCM** encodings, which heavily reduce the required memory to play the file. 
 
 # Supported Features
 ## Supported CWAV Audio Encodings
-Currently, the following audio encodings are supported (with looping).
+The following audio encodings are supported.
 
 ### PCM8/PCM16
 Uncompressed **8/16 bit PCM**. Useful if memory usage is not a problem.
@@ -18,25 +16,18 @@ Uncompressed **8/16 bit PCM**. Useful if memory usage is not a problem.
 ### IMA ADPCM
 Lossy compression format, useful if the available memory is limited. Can only be played with **CSND**.
 
+### DSP ADPCM
+Lossy compression format, similar to **IMA ADPCM**. Can only be played with **DSP**.
+
 ## Supported System Services
-Currently, the following system services used to play the audio are supported.
+The following system services used to play the audio are supported.
+
+### DSP
+This system service is used by normal applications. It is recommended to use this system service, as it properly supports suspending applications and sleep mode.
 
 ### CSND
 This system service is used by *applets* to play audio. It has the advantage of playing audio on top of running/suspended applications, whitout causing any interferences.
 Use this system service if you want to play audio in *applets* or *3GX game plugins*. Make sure to use *`cwavDoAptHook()`* or *`cwavNotifyAptEvent()`* to handle apt events (app suspend, sleep or exit)!
-
-# Planned Features
-## Planned CWAV Audio Encodings
-The following audio encodings are planned (with looping).
-
-### DSP ADPCM
-Lossy compression format, similar to **IMA ADPCM**. Can only be played with **NDSP**.
-
-## Planned System Services
-The following system services used to play the audio are planned.
-
-### DSP
-This system service is used by normal applications, implemented as **NDSP** in libctru. It is recommended to use this system service, as it properly supports application suspension and closing.
 
 # Installation and Usage
 1. Make sure you have [devkitpro](https://devkitpro.org/wiki/Getting_Started) installed and working.
