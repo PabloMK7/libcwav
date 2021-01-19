@@ -37,7 +37,7 @@ Use this system service if you want to play audio in *applets* or *3GX game plug
 5. In your project makefile, add the following to the `LIBS` line (or similar): `-lcwav` if the already listed libraries start with `-l` or just `cwav` if they don't.
 6. Add `#include "cwav.h"` in your source files to use the library.
 
-You can check all the available function calls in the documentation provided in [cwav.h](include/cwav.h).
+You can check all the available function calls in the documentation provided in [cwav.h](include/cwav.h). Also, you can see an example application in [example_libcwav](example_libcwav).
 
 # Credits
 - [libctru](https://github.com/devkitPro/libctru): **CSND** and **DSP** implementation.
