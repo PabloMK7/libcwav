@@ -13,11 +13,11 @@ The following audio encodings are supported.
 ### PCM8/PCM16
 Uncompressed **8/16 bit PCM**. Useful if memory usage is not a problem.
 
-### IMA ADPCM
-Lossy compression format, useful if the available memory is limited. Can only be played with **CSND**.
-
 ### DSP ADPCM
-Lossy compression format, similar to **IMA ADPCM**. Can only be played with **DSP**.
+Lossy compression format, useful if the available memory is limited. Can only be played with **DSP**.
+
+### IMA ADPCM
+Lossy compression format, similar to **DSP ADPCM**. Can only be played with **CSND**.
 
 ## Supported System Services
 The following system services used to play the audio are supported.
@@ -40,7 +40,7 @@ Use this system service if you want to play audio in *applets* or *3GX game plug
 You can check all the available function calls in the documentation provided in [cwav.h](include/cwav.h).
 
 # Credits
-- [libctru](https://github.com/devkitPro/libctru): **CSND** and **NDSP** implementation.
+- [libctru](https://github.com/devkitPro/libctru): **CSND** and **DSP** implementation.
 - [3dbrew.org](https://www.3dbrew.org/wiki/BCWAV): **(b)cwav** file specification.
 
 # License
