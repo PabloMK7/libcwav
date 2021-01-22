@@ -40,6 +40,23 @@ const u8 maxSPlayList[] =
 	1
 };
 
+const char* bit_str[] = 
+{
+    "0000", "0001", "0010", "0011",
+    "0100", "0101", "0110", "0111",
+    "1000", "1001", "1010", "1011",
+    "1100", "1101", "1110", "1111"
+};
+
+void print_u32_binary(u32 val)
+{
+	for (u32 i = 0; i < 4; i++)
+	{
+		u32 toprint = val >> ((3 - i) * 8);
+		printf("%s%s", bit_str[(toprint >> 4) & 0xF], bit_str[toprint & 0x0F]);
+	}
+}
+
 std::vector<std::tuple<std::string, CWAV*, void*>> cwavList;
 
 void populateCwavList()
@@ -161,8 +178,15 @@ int main(int argc, char **argv)
 			if (changed)
 			{
 				consoleClear();
-				printf("libcwav example.\n\n|%s| %s\n\nPress A to play the selected sound.\nPress UP/DOWN to change the file.\nPress B to stop the selected file.\n\nPress START to exit.", statusStr[cwavStatus[currsound]], std::get<0>(cwavList[currsound]).c_str());
+				printf("libcwav example.\n\n|%s| %s\n\nPress A to play the selected sound.\nPress UP/DOWN to change the file.\nPress B to stop the selected file.\n\nPress START to exit.\n\nPlaying channels:\n", statusStr[cwavStatus[currsound]], std::get<0>(cwavList[currsound]).c_str());
+				print_u32_binary(cwavGetEnvironmentPlayingChannels());
 				changed = false;
+			}
+			else
+			{
+				printf("\r");
+				print_u32_binary(cwavGetEnvironmentPlayingChannels());
+				fflush(stdout);
 			}
 			hidScanInput();
 			u32 kdown = hidKeysDown();
@@ -201,18 +225,18 @@ int main(int argc, char **argv)
 				CSND_DirectSound dirSound;
 				csndInitializeDirectSound(&dirSound);
 
-				dirSound.soundModifiers.forceSpeakerOutput = 1;
-				dirSound.soundModifiers.ignoreVolumeSlider = 1;
+				//dirSound.soundModifiers.forceSpeakerOutput = 1;
+				//dirSound.soundModifiers.ignoreVolumeSlider = 1;
 				dirSound.soundModifiers.playOnSleep = 1;
 
 				CWAV* cwav = std::get<1>(cwavList[currsound]);
 				if (cwav->numChannels == 2)
 				{
-					cwavPlayAsDirectSound(cwav, 0, 1, &dirSound.soundModifiers);
+					cwavPlayAsDirectSound(cwav, 0, 1, 0, 0, &dirSound.soundModifiers);
 				}
 				else
 				{
-					cwavPlayAsDirectSound(cwav, 0, -1, &dirSound.soundModifiers);
+					cwavPlayAsDirectSound(cwav, 0, -1, 0, 0, &dirSound.soundModifiers);
 				}
 			}
 			#endif

@@ -110,12 +110,14 @@ void cwavFree(CWAV* cwav);
  * @param cwav The CWAV to play.
  * @param leftChannel The CWAV channel to play on the left ear.
  * @param rigtChannel The CWAV channel to play on the right ear.
+ * @param directSoundChannel The direct sound channel to play the sound on. Range [0-3].
+ * @param directSoundPrioriy The direct sound priority to use if the specified channel is in use (smaller value -> higher priority). Range [0-31].
  * @param soundModifiers CSND direct sound modifiers to apply to the sound.
  * 
  * To play a single channel in mono for both ears, set rightChannel to -1.
  * The individual channel volumes are multiplied by the CWAV volume.
 */
-bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, CSND_DirectSoundModifiers* soundModifiers);
+bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, u32 directSoundChannel, u32 directSoundPriority, CSND_DirectSoundModifiers* soundModifiers);
 #endif
 
 /**
@@ -139,6 +141,17 @@ bool cwavPlay(CWAV* cwav, int leftChannel, int rightChannel);
 */
 void cwavStop(CWAV* cwav, int leftChannel, int rightChannel);
 
+/**
+ * @brief Checks whether the cwav is currently playing or not.
+ * @return Boolean representing the playing state.
+*/
+bool cwavIsPlaying(CWAV* cwav);
+
+/**
+ * @brief Gets a bitmap representing the playing state of the channels for the selected environment.
+ * @return Bitmap of the playing channels. First channel is the LSB.
+*/
+u32 cwavGetEnvironmentPlayingChannels();
 
 #ifdef __cplusplus
 }

@@ -320,7 +320,7 @@ void cwavFree(CWAV* cwav)
 }
 
 #ifdef DIRECT_SOUND_IMPLEMENTED
-bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, CSND_DirectSoundModifiers* soundModifiers)
+bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, u32 directSoundChannel, u32 directSoundPriority, CSND_DirectSoundModifiers* soundModifiers)
 {
     if (cwavEnvGetEnvironment() != CWAV_ENV_CSND || !cwav || cwav->loadStatus != CWAV_SUCCESS)
         return false;
@@ -386,7 +386,7 @@ bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, CSND_D
     if (rightSampleData)
         dirSound.channelData.sampleData[1] = (void*)cwavCurrentVAPAConvCallback(rightSampleData);
 
-    return R_SUCCEEDED(csndPlayDirectSound(&dirSound, false));
+    return R_SUCCEEDED(csndPlayDirectSound(&dirSound, directSoundChannel, directSoundPriority, false));
 }
 #endif
 
@@ -531,4 +531,33 @@ void cwavStop(CWAV* cwav, int leftChannel, int rightChannel)
     cwav_t* cwav_ = CWAVTOIMPL(cwav);
     for (int i = 0; i < cwav_->totalMultiplePlay; i++)
         cwav_stopImpl(cwav_, leftChannel, rightChannel, i);
+}
+
+bool cwavIsPlaying(CWAV* cwav)
+{
+    bool isPlaying = false;
+    cwav_t* currCwav = CWAVTOIMPL(cwav);
+    for (int j = 0; j < currCwav->totalMultiplePlay; j++)
+    {
+        for (int k = 0; k < currCwav->channelcount; k++)
+        {
+            if (currCwav->playingChanIds[j][k] == -1)
+                continue;
+            if (!cwavEnvChannelIsPlaying(currCwav->playingChanIds[j][k]))
+                currCwav->playingChanIds[j][k] = -1;
+            else
+                isPlaying = true; // Could return here, but prefer to update the playing status for all channels.
+        }
+    }
+    return isPlaying;
+}
+
+u32 cwavGetEnvironmentPlayingChannels()
+{
+    u32 ret = 0;
+    for (int i = 0; i < cwavEnvGetChannelAmount(); i++)
+    {
+        ret |= ((u32)(cwavEnvIsChannelAvailable(i) && cwavEnvChannelIsPlaying(i)) & 1) << i;
+    }
+    return ret;
 }
