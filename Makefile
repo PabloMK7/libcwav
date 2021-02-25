@@ -99,7 +99,7 @@ $(BUILD): lib
 #---------------------------------------------------------------------------------
 install: all
 	@mkdir -p $(LIBCWAVDIR)/include $(LIBCWAVDIR)/lib
-	@cp $(OUTPUT) $(LIBCWAVDIR)/lib
+	@cp $(OUTPUT) $(LIBCWAVDIR)/lib/libcwav.a
 	@cp $(CURDIR)/include/cwav.h $(LIBCWAVDIR)/include
 	@echo "libcwav has been installed."
 
