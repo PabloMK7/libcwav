@@ -101,6 +101,7 @@ install: all
 	@mkdir -p $(LIBCWAVDIR)/include $(LIBCWAVDIR)/lib
 	@cp $(OUTPUT) $(LIBCWAVDIR)/lib/libcwav.a
 	@cp $(CURDIR)/include/cwav.h $(LIBCWAVDIR)/include
+	@cp $(CURDIR)/include/cwav_file.h $(LIBCWAVDIR)/include
 	@echo "libcwav has been installed."
 
 uninstall:

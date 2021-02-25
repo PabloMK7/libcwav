@@ -260,7 +260,7 @@ void cwavEnvStop(u32 channel)
     }
     else if (g_currentEnv == CWAV_ENV_DSP)
     {
-        ndspChnWaveBufClear(channel);
+        ndspChnReset(channel);
         ndspWaveBuf* block0Buff = cwavEnvGetNdspWaveBuffer(channel, 0);
         ndspWaveBuf* block1Buff = cwavEnvGetNdspWaveBuffer(channel, 1);
         block0Buff->status = block1Buff->status = NDSP_WBUF_FREE;

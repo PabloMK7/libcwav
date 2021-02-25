@@ -6,6 +6,9 @@
 #include <tuple>
 
 #include <cwav.h>
+// For demonstration purposes, the loading from file is done manually.
+// Uncomment the line below to use the file load and free functions.
+// #include <cwav_file.h>
 
 void updateScreens()
 {
@@ -57,39 +60,53 @@ void print_u32_binary(u32 val)
 	}
 }
 
-std::vector<std::tuple<std::string, CWAV*, void*>> cwavList;
+std::vector<std::tuple<std::string, CWAV*>> cwavList;
 
 void populateCwavList()
 {
 	
 	for (u32 i = 0; i < sizeof(fileList) / sizeof(char*); i++)
 	{
-		
+
+		CWAV* cwav = (CWAV*)malloc(sizeof(CWAV));
+
 		FILE* file = fopen(fileList[i], "rb");
 		if (!file)
+		{
+			cwavFree(cwav);
+			free(cwav);
 			continue;
+		}
 
 		fseek(file, 0, SEEK_END);
 		u32 fileSize = ftell(file);
 		void* buffer = linearAlloc(fileSize);
-		if (!buffer)
+		if (!buffer) // This should never happen (unless we load a file too big to fit)
 			svcBreak(USERBREAK_PANIC);
 
 		fseek(file, 0, SEEK_SET); 
 		fread(buffer, 1, fileSize, file);
 		fclose(file);
 
-		CWAV* cwav = (CWAV*)malloc(sizeof(CWAV));
+		// Since we manually allocated the buffer, we use cwavLoad directly...
 		cwavLoad(cwav, buffer, maxSPlayList[i]);
+		cwav->dataBuffer = buffer; // (We store the buffer pointer here for convinience, but it's not required.)
+		// or, we could have let the library handle it...
+		// cwavFileLoad(cwav, fileList[i], maxSPlayList[i]);
 
 		if (cwav->loadStatus == CWAV_SUCCESS)
 		{
-			cwavList.push_back(std::make_tuple(std::string(fileList[i]), cwav, buffer));
+			cwavList.push_back(std::make_tuple(std::string(fileList[i]), cwav));
 		}
 		else
 		{
+			// Manually de-allocating the buffer
 			cwavFree(cwav);
-			linearFree(buffer);
+			linearFree(cwav->dataBuffer);
+			// or, if we used cwavFileLoad, let the library handle it.
+			// cwavFileFree(cwav);
+
+			free(cwav);
 		}
 	}
 }
@@ -98,11 +115,14 @@ void freeCwavList()
 {
 	for (auto it = cwavList.begin(); it != cwavList.end(); it++)
 	{
+		// Manually de-allocating the buffer
 		cwavFree(std::get<1>(*it));
-		free(std::get<1>(*it));
-		void* buffer = std::get<2>(*it);
+		void* buffer = std::get<1>(*it)->dataBuffer;
 		if (buffer)
 			linearFree(buffer);
+		// or, if we used cwavFileLoad, let the library handle it.
+		// cwavFileFree(std::get<1>(*it));
+		free(std::get<1>(*it));
 	}
 }
 

@@ -35,9 +35,9 @@ Use this system service if you want to play audio in *applets* or *3GX game plug
 3. Run `make install` and confirm there aren't any errors.
 4. In your project makefile, add the following to the `LIBDIRS` line (or similar): `$(DEVKITPRO)/libcwav`
 5. In your project makefile, add the following to the `LIBS` line (or similar): `-lcwav` if the already listed libraries start with `-l` or just `cwav` if they don't.
-6. Add `#include "cwav.h"` in your source files to use the library.
+6. Add `#include "cwav.h"` and/or `#include "cwav_file.h"` in your source files to use the library.
 
-You can check all the available function calls in the documentation provided in [cwav.h](include/cwav.h). Also, you can see an example application in [example_libcwav](example_libcwav).
+You can check all the available function calls in the documentation provided in [cwav.h](include/cwav.h) and [cwav_file.h](include/cwav_file.h). Also, you can see an example application in [example_libcwav](example_libcwav).
 
 # Credits
 - [libctru](https://github.com/devkitPro/libctru): **CSND** and **DSP** implementation.

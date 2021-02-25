@@ -35,6 +35,7 @@ typedef enum
 typedef struct CWAV_s
 {
     void* cwav; ///< Pointer to internal cwav data, should not be used.
+    void* dataBuffer; ///< [RW] Pointer to the buffer where the CWAV was loaded (used by cwavFileLoad and cwavFileFree). Otherwise, can be used by the user to store the allocation address (ignored by the library).
     cwavLoadStatus_t loadStatus; ///< [R] Value from the cwavLoadStatus_t enum. Set when the CWAV is loaded. 
     float monoPan; ///< [RW] Value in the range [-1.0, 1.0]. -1.0 for left ear and 1.0 for right ear. Only used if played in mono. Default: 0.0
     float volume; ///< [RW] Value in the range [0.0, 1.0]. 0.0 muted and 1.0 full volume. Default: 1.0
