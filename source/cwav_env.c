@@ -206,7 +206,7 @@ void cwavEnvPlay(u32 channel, bool isLooped, cwavEncoding_t encoding, u32 sample
         ndspWaveBuf* block0Buff = cwavEnvGetNdspWaveBuffer(channel, 0);
         ndspWaveBuf* block1Buff = cwavEnvGetNdspWaveBuffer(channel, 1);
 
-        float mix[16] = {0};
+        float mix[12] = {0};
         float rightPan = (pan + 1.f) / 2.f;
         float leftPan = 1.f - rightPan;
         mix[0] = 0.8f * leftPan * volume; // Left front
@@ -214,7 +214,7 @@ void cwavEnvPlay(u32 channel, bool isLooped, cwavEncoding_t encoding, u32 sample
         mix[1] = 0.8f * rightPan * volume; // Right front
         mix[3] = 0.2f * rightPan * volume; // Right back
 
-        ndspChnSetFormat(channel, encFlag | NDSP_3D_SURROUND_PREPROCESSED);
+        ndspChnSetFormat(channel, encFlag);
         ndspChnSetRate(channel, (float)sampleRate);
         ndspChnSetMix(channel, mix);
 
