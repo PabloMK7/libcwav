@@ -148,7 +148,7 @@ static void cwav_initialize(CWAV* out, u8 maxSPlays)
         return;
     }
 
-    cwavLoadStatus_t ret = cwav_parseInfoBlock(cwav); 
+    cwavStatus_t ret = cwav_parseInfoBlock(cwav); 
     if (ret != CWAV_SUCCESS)
     {
         out->loadStatus = ret;
@@ -392,10 +392,14 @@ bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, u32 di
 }
 #endif
 
-bool cwavPlay(CWAV* cwav, int leftChannel, int rightChannel)
+cwavPlayResult cwavPlay(CWAV* cwav, int leftChannel, int rightChannel)
 {
-    if (!cwav || cwav->loadStatus != CWAV_SUCCESS) 
-        return false;
+    cwavPlayResult ret;
+    if (!cwav || cwav->loadStatus != CWAV_SUCCESS)
+    {
+        ret.playStatus = CWAV_NOT_ALLOCATED;
+        return ret;
+    }
     
     cwav_t* cwav_ = CWAVTOIMPL(cwav);
 
@@ -406,7 +410,8 @@ bool cwavPlay(CWAV* cwav, int leftChannel, int rightChannel)
     }
     if (leftChannel < 0 || leftChannel >= (int)(cwav_->channelcount) || rightChannel >= (int)(cwav_->channelcount))
     {
-        return false;
+        ret.playStatus = CWAV_INVALID_CWAV_CHANNEL;
+        return ret;
     }
 
     cwav_UpdatePlayingStatus();
@@ -432,7 +437,8 @@ bool cwavPlay(CWAV* cwav, int leftChannel, int rightChannel)
         }
         if (cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel] == -1)
         {
-            return false;
+            ret.playStatus = CWAV_NO_CHANNEL_AVAILABLE;
+            return ret;
         }
 
         prevchan = cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel];
@@ -521,8 +527,17 @@ bool cwavPlay(CWAV* cwav, int leftChannel, int rightChannel)
         }
         
         cwavEnvPlay(cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel], cwav_->cwavInfo->isLooped, encoding, cwav_->cwavInfo->sampleRate, volume, pan, block0, block1, cwav_->cwavInfo->loopStart, cwav_->cwavInfo->LoopEnd, size);
+        if (!i)
+        {
+            ret.monoLeftChannel = cwav_->playingChanIds[cwav_->currMultiplePlay][leftChannel];
+        }
+        else
+        {
+            ret.rightChannel = cwav_->playingChanIds[cwav_->currMultiplePlay][rightChannel];
+        }
     }
-    return true;
+    ret.playStatus = CWAV_SUCCESS;
+    return ret;
 }
 
 void cwavStop(CWAV* cwav, int leftChannel, int rightChannel)
@@ -538,6 +553,8 @@ void cwavStop(CWAV* cwav, int leftChannel, int rightChannel)
 bool cwavIsPlaying(CWAV* cwav)
 {
     bool isPlaying = false;
+    if (!cwav || cwav->loadStatus != CWAV_SUCCESS)
+        return isPlaying;
     cwav_t* currCwav = CWAVTOIMPL(cwav);
     for (int j = 0; j < currCwav->totalMultiplePlay; j++)
     {

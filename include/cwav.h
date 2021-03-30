@@ -12,17 +12,24 @@ extern "C" {
 /// Posible status values.
 typedef enum
 {
+    // General status values.
     CWAV_NOT_ALLOCATED = 0, ///< CWAV is not allocated and cannot be used.
     CWAV_SUCCESS = 1, ///< CWAV loaded properly and is ready to play.
     CWAV_INVALID_ARGUMENT = 2, ///< An invalid argument was passed to the function call.
+
+    // Load status values.
     CWAV_FILE_OPEN_FAILED = 3, ///< Failed to open the specified file.
     CWAV_FILE_TOO_LARGE = 4, ///< The file is too large to fit in the available memory.
     CWAV_UNKNOWN_FILE_FORMAT = 5, ///< The specified file is not a valid CWAV file.
     CWAV_INVAID_INFO_BLOCK = 6, ///< The INFO block in the CWAV file is invalid or not supported.
     CWAV_INVAID_DATA_BLOCK = 7, ///< The DATA block in the CWAV file is invalid or not supported.
     CWAV_UNSUPPORTED_AUDIO_ENCODING = 8, ///< The audio encoding is not supported.
-    
-} cwavLoadStatus_t;
+
+    // Play status values.
+    CWAV_INVALID_CWAV_CHANNEL = 9, ///< The specified channel is not in the CWAV.
+    CWAV_NO_CHANNEL_AVAILABLE = 10, ///< No DSP/CSND channels available to play the sound.
+
+} cwavStatus_t;
 
 /// Possible environments
 typedef enum
@@ -31,16 +38,23 @@ typedef enum
     CWAV_ENV_CSND = 1 // CSND Service, only available for applets and 3GX plugins.
 } cwavEnvMode_t;
 
+typedef struct cwavPlayResult_s
+{
+    cwavStatus_t    playStatus;         ///< Value from the cwavStatus_t enum.
+    u8              monoLeftChannel;    ///< Mono or left ear DSP/CSND channel the sound is playing on.
+    u8              rightChannel;       ///< Right ear DSP/CSND channel the sound is playing on.
+} cwavPlayResult;
+
 /// CWAV structure, some values can be read [R] or written [W] to.
 typedef struct CWAV_s
 {
-    void* cwav; ///< Pointer to internal cwav data, should not be used.
-    void* dataBuffer; ///< [RW] Pointer to the buffer where the CWAV was loaded (used by cwavFileLoad and cwavFileFree). Otherwise, can be used by the user to store the allocation address (ignored by the library).
-    cwavLoadStatus_t loadStatus; ///< [R] Value from the cwavLoadStatus_t enum. Set when the CWAV is loaded. 
-    float monoPan; ///< [RW] Value in the range [-1.0, 1.0]. -1.0 for left ear and 1.0 for right ear. Only used if played in mono. Default: 0.0
-    float volume; ///< [RW] Value in the range [0.0, 1.0]. 0.0 muted and 1.0 full volume. Default: 1.0
-    u8 numChannels; ///< [R] Number of CWAV channels stored in the file.
-    u8 isLooped; ///< [R] Whether the file is looped or not.
+    void*           cwav;           ///< Pointer to internal cwav data, should not be used.
+    void*           dataBuffer;     ///< [RW] Pointer to the buffer where the CWAV was loaded (used by cwavFileLoad and cwavFileFree). Otherwise, can be used by the user to store the allocation address (ignored by the library).
+    cwavStatus_t    loadStatus;     ///< [R] Value from the cwavStatus_t enum. Set when the CWAV is loaded. 
+    float           monoPan;        ///< [RW] Value in the range [-1.0, 1.0]. -1.0 for left ear and 1.0 for right ear. Only used if played in mono. Default: 0.0
+    float           volume;         ///< [RW] Value in the range [0.0, 1.0]. 0.0 muted and 1.0 full volume. Default: 1.0
+    u8              numChannels;    ///< [R] Number of CWAV channels stored in the file.
+    u8              isLooped;       ///< [R] Whether the file is looped or not.
 } CWAV;
 
 /// vAddr to pAddr conversion callback definition.
@@ -51,25 +65,26 @@ typedef u32(*vaToPaCallback_t)(const void*);
  * 
  * This call does not initialize the desired service. ndspInit/csndInit should be called before.
  * By default, DSP is used. Modifying the enviroment after loading the first CWAV causes undefined behaviour.
+ * Remember to call cwavDoAptHook or use cwavNotifyAptEvent if CSND has to be used.
 */
 void cwavUseEnvironment(cwavEnvMode_t envMode);
 
 /**
- * @brief Hooks to libctru APT implementation to recieve apt events. (Required for CSND)
+ * @brief Hooks to libctru APT implementation to recieve apt events. (Required only for CSND)
  * 
  * Needs to be used in environments supported by libctru, should not be used with applets nor 3GX game plugins.
  * For unsupported environments, use cwavNotifyAptEvent directly to notify individual events.
- * Either cwavDoAptHook or cwavNotifyAptEvent MUST be used, otherwise it will cause undefined behaviour.
+ * Either cwavDoAptHook or cwavNotifyAptEvent MUST be used with CSND, otherwise it will cause undefined behaviour.
 */
 void cwavDoAptHook();
 
 /**
- * @brief Notifies the lib of an incoming apt event. (Required for CSND)
+ * @brief Notifies the lib of an incoming apt event. (Required only for CSND)
  * @param event The apt event to notify.
  * 
  * Should be used in environments not supported by libctru, such as applets and 3GX game plugins.
  * For supported environments, use cwavDoAptHook so the the library automatically handles the events.
- * Either cwavDoAptHook or cwavNotifyAptEvent MUST be used, otherwise it will cause undefined behaviour.
+ * Either cwavDoAptHook or cwavNotifyAptEvent MUST be used with CSND, otherwise it will cause undefined behaviour.
 */
 void cwavNotifyAptEvent(APT_HookType event);
 
@@ -130,7 +145,7 @@ bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, u32 di
  * 
  * To play a single channel in mono for both ears, set rightChannel to -1.
 */
-bool cwavPlay(CWAV* cwav, int leftChannel, int rightChannel);
+cwavPlayResult cwavPlay(CWAV* cwav, int leftChannel, int rightChannel);
 
 /**
  * @brief Stops the specified channels in the bcwav file.
