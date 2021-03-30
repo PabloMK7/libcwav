@@ -31,13 +31,14 @@ typedef enum
 
 } cwavStatus_t;
 
-/// Possible environments
+/// Possible environments.
 typedef enum
 {
     CWAV_ENV_DSP = 0, // DSP Service, only available for applications.
     CWAV_ENV_CSND = 1 // CSND Service, only available for applets and 3GX plugins.
 } cwavEnvMode_t;
 
+/// Information returned by cwavPlay.
 typedef struct cwavPlayResult_s
 {
     cwavStatus_t    playStatus;         ///< Value from the cwavStatus_t enum.
