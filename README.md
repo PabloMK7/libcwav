@@ -39,6 +39,9 @@ Use this system service if you want to play audio in *applets* or *3GX game plug
 
 You can check all the available function calls in the documentation provided in [cwav.h](include/cwav.h) and [cwav_file.h](include/cwav_file.h). Also, you can see an example application in [example_libcwav](example_libcwav).
 
+# Creating (b)cwav files
+You can use [cwavtool](https://github.com/mariohackandglitch/cwavtool) to create **(b)cwav** files from other audio formats. It supports all possible encodings and loop points.
+
 # Credits
 - [libctru](https://github.com/devkitPro/libctru): **CSND** and **DSP** implementation.
 - [3dbrew.org](https://www.3dbrew.org/wiki/BCWAV): **(b)cwav** file specification.
