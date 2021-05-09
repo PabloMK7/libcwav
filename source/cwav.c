@@ -134,6 +134,7 @@ static void cwav_initialize(CWAV* out, u8 maxSPlays)
 
     out->monoPan = 0.f;
     out->volume = 1.f;
+    out->pitch = 1.f;
 
     if (maxSPlays == 0)
     {
@@ -172,6 +173,7 @@ static void cwav_initialize(CWAV* out, u8 maxSPlays)
     }
     
     cwav->currMultiplePlay = 0;
+    out->sampleRate = cwav->cwavInfo->sampleRate;
     out->numChannels = cwav->channelcount;
     out->isLooped = cwav->cwavInfo->isLooped;
 
@@ -510,6 +512,7 @@ cwavPlayResult cwavPlay(CWAV* cwav, int leftChannel, int rightChannel)
 
         float pan = 0.f;
         float volume = cwav->volume;
+        float pitch = cwav->pitch;
         if (stereo)
         {
             if (i == 0)
@@ -526,7 +529,7 @@ cwavPlayResult cwavPlay(CWAV* cwav, int leftChannel, int rightChannel)
             pan = cwav->monoPan;
         }
         
-        cwavEnvPlay(cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel], cwav_->cwavInfo->isLooped, encoding, cwav_->cwavInfo->sampleRate, volume, pan, block0, block1, cwav_->cwavInfo->loopStart, cwav_->cwavInfo->LoopEnd, size);
+        cwavEnvPlay(cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel], cwav_->cwavInfo->isLooped, encoding, cwav_->cwavInfo->sampleRate, volume, pan, pitch, block0, block1, cwav_->cwavInfo->loopStart, cwav_->cwavInfo->LoopEnd, size);
         if (!i)
         {
             ret.monoLeftChannel = cwav_->playingChanIds[cwav_->currMultiplePlay][leftChannel];

@@ -54,6 +54,8 @@ typedef struct CWAV_s
     cwavStatus_t    loadStatus;     ///< [R] Value from the cwavStatus_t enum. Set when the CWAV is loaded. 
     float           monoPan;        ///< [RW] Value in the range [-1.0, 1.0]. -1.0 for left ear and 1.0 for right ear. Only used if played in mono. Default: 0.0
     float           volume;         ///< [RW] Value in the range [0.0, 1.0]. 0.0 muted and 1.0 full volume. Default: 1.0
+    float           pitch;          ///< [RW] Changes the playback speed. Default: 1.0 (no pitch change)
+    u32             sampleRate;     ///< [R] The sample rate of the audio data.
     u8              numChannels;    ///< [R] Number of CWAV channels stored in the file.
     u8              isLooped;       ///< [R] Whether the file is looped or not.
 } CWAV;

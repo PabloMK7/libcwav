@@ -12,7 +12,7 @@ u32 cwav_defaultVAToPA(const void* addr)
 }
 vaToPaCallback_t cwavCurrentVAPAConvCallback = cwav_defaultVAToPA;
 
-static Result csndPlaySoundFixed(int chn, u32 flags, u32 sampleRate, float vol, float pan, void* data0, void* data1, u32 size)
+static Result csndPlaySoundFixed(int chn, u32 flags, u32 sampleRate, float vol, float pan, float pitch, void* data0, void* data1, u32 size)
 {
     if (!(csndChannels & BIT(chn)))
         return 1;
@@ -33,7 +33,7 @@ static Result csndPlaySoundFixed(int chn, u32 flags, u32 sampleRate, float vol, 
             paddr1 = cwavCurrentVAPAConvCallback(data1);
     }
 
-    u32 timer = CSND_TIMER(sampleRate);
+    u32 timer = CSND_TIMER((u32)(sampleRate * pitch));
     if (timer < 0x0042) 
         timer = 0x0042;
     else if (timer > 0xFFFF) 
@@ -162,7 +162,7 @@ void cwavEnvSetADPCMState(cwav_t* cwav, u32 channel)
     }
 }
 
-void cwavEnvPlay(u32 channel, bool isLooped, cwavEncoding_t encoding, u32 sampleRate, float volume, float pan, void* block0, void* block1, u32 loopStart, u32 loopEnd, u32 totalSize)
+void cwavEnvPlay(u32 channel, bool isLooped, cwavEncoding_t encoding, u32 sampleRate, float volume, float pan, float pitch, void* block0, void* block1, u32 loopStart, u32 loopEnd, u32 totalSize)
 {
     if (g_currentEnv == CWAV_ENV_CSND)
     {
@@ -182,7 +182,7 @@ void cwavEnvPlay(u32 channel, bool isLooped, cwavEncoding_t encoding, u32 sample
             break;
         }
         
-        csndPlaySoundFixed(channel, (isLooped ? SOUND_REPEAT : SOUND_ONE_SHOT) | encFlag, sampleRate, volume, pan, block0, block1, totalSize);
+        csndPlaySoundFixed(channel, (isLooped ? SOUND_REPEAT : SOUND_ONE_SHOT) | encFlag, sampleRate, volume, pan, pitch, block0, block1, totalSize);
         csndExecCmds(true);
     }
     else if (g_currentEnv == CWAV_ENV_DSP)
@@ -215,7 +215,7 @@ void cwavEnvPlay(u32 channel, bool isLooped, cwavEncoding_t encoding, u32 sample
         mix[3] = 0.2f * rightPan * volume; // Right back
 
         ndspChnSetFormat(channel, encFlag);
-        ndspChnSetRate(channel, (float)sampleRate);
+        ndspChnSetRate(channel, (float)(sampleRate) * pitch);
         ndspChnSetMix(channel, mix);
 
         block1Buff->data_vaddr = isLooped ? block1 : block0;
