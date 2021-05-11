@@ -246,7 +246,11 @@ bool cwavEnvChannelIsPlaying(u32 channel)
     }
     else if (g_currentEnv == CWAV_ENV_DSP)
     {
-        return ndspChnIsPlaying(channel);
+        ndspWaveBuf* block0Buff = cwavEnvGetNdspWaveBuffer(channel, 0);
+        ndspWaveBuf* block1Buff = cwavEnvGetNdspWaveBuffer(channel, 1);
+
+        return (block0Buff->status == NDSP_WBUF_QUEUED || block0Buff->status == NDSP_WBUF_PLAYING ||
+                block1Buff->status == NDSP_WBUF_QUEUED || block1Buff->status == NDSP_WBUF_PLAYING);
     }
     return false;
 }
