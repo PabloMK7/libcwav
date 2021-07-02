@@ -323,6 +323,63 @@ void cwavFree(CWAV* cwav)
     cwav->loadStatus = CWAV_NOT_ALLOCATED;
 }
 
+#if defined(_MSC_VER)
+#define __cwav__weak // This fixes intellisense
+#else
+#define __cwav__weak __attribute__((weak))
+#endif
+// By defining these as weak and in the case they are not defined, they won't be called instead of the compiler erroring.
+void* __cwav__weak linearAlloc(size_t size);
+void  __cwav__weak linearFree(void* mem);
+
+void cwavFileLoad(CWAV* out, const char* bcwavFileName, u8 maxSPlays)
+{
+    FILE* file = NULL;
+    size_t fileSize = 0;
+    void* buffer = NULL;
+
+    if (!out)
+        goto exit;
+
+    file = fopen(bcwavFileName, "rb");
+    if (!file)
+        goto exit;
+
+    if (fseek(file, 0, SEEK_END))
+        goto exitClose;
+    fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    buffer = linearAlloc(fileSize);
+    if (!buffer)
+        goto exitClose;
+
+    if (fread(buffer, 1, fileSize, file) != fileSize)
+    {
+        linearFree(buffer);
+        goto exitClose;
+    }
+
+    cwavLoad(out, buffer, maxSPlays);
+    out->dataBuffer = buffer;
+
+exitClose:
+    fclose(file);
+exit:
+    return;
+}
+
+void cwavFileFree(CWAV* cwav)
+{
+    if (!cwav)
+        return;
+    
+    cwavFree(cwav);
+
+    if (cwav->dataBuffer)
+        linearFree(cwav->dataBuffer);
+}
+
 #ifdef DIRECT_SOUND_IMPLEMENTED
 bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, u32 directSoundChannel, u32 directSoundPriority, CSND_DirectSoundModifiers* soundModifiers)
 {

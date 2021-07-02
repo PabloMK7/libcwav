@@ -6,9 +6,6 @@
 #include <tuple>
 
 #include <cwav.h>
-// For demonstration purposes, the loading from file is done manually.
-// Uncomment the line below to use the file load and free functions.
-// #include <cwav_file.h>
 
 void updateScreens()
 {

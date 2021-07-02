@@ -113,6 +113,19 @@ void cwavSetVAToPACallback(vaToPaCallback_t callback);
 void cwavLoad(CWAV* out, const void* bcwavFileBuffer, u8 maxSPlays);
 
 /**
+ * @brief Loads a CWAV from the file system.
+ * @param bcwavFileName Path to the (b)CWAV file in the filesystem.
+ * @param maxSPlays Amount of times this CWAV can be played simultaneously (should be >0).
+ * 
+ * Use the loadStatus struct member to determine if the load was successful.
+ * Wether the load was successful or not, cwavFileFree must be always called to clean up and free the memory.
+ * Do not use cwavFree, as it will not properly free the bcwav buffer.
+ * 
+ * This function does not work with 3GX plugins.
+ */
+void cwavFileLoad(CWAV* out, const char* bcwavFileName, u8 maxSPlays);
+
+/**
  * @brief Frees the CWAV.
  * @param cwav The CWAV to free.
  * 
@@ -121,6 +134,16 @@ void cwavLoad(CWAV* out, const void* bcwavFileBuffer, u8 maxSPlays);
  * The CWAV* struct itself must be freed manually if it has been allocated.
 */
 void cwavFree(CWAV* cwav);
+
+/**
+ * @brief Frees a CWAV loaded from the filesystem.
+ * @param cwav The CWAV to free.
+ * 
+ * Must be called even if the CWAV file load fails.
+ * Use this if you have used cwavFileLoad, otherwise use cwavFree.
+ * The CWAV* struct itself must be freed manually if it has been allocated.
+*/
+void cwavFileFree(CWAV* cwav);
 
 //#define DIRECT_SOUND_IMPLEMENTED
 #ifdef DIRECT_SOUND_IMPLEMENTED
