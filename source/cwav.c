@@ -347,7 +347,6 @@ void cwavFileLoad(CWAV* out, const char* bcwavFileName, u8 maxSPlays)
         out->loadStatus = CWAV_FILE_OPEN_FAILED;
         goto exit;
     }
-        
 
     if (fseek(file, 0, SEEK_END)) {
         out->loadStatus = CWAV_FILE_OPEN_FAILED;
