@@ -316,7 +316,7 @@ void cwavFree(CWAV* cwav)
         if (cwav_->DSPADPCMInfos)
             free(cwav_->DSPADPCMInfos);
         free(cwav_);
-        cwav_ = NULL;
+        cwav->cwav = NULL;
     }
     cwav->loadStatus = CWAV_NOT_ALLOCATED;
 }
