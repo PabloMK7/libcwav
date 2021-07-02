@@ -343,19 +343,30 @@ void cwavFileLoad(CWAV* out, const char* bcwavFileName, u8 maxSPlays)
 
     file = fopen(bcwavFileName, "rb");
     if (!file)
+    {
+        out->loadStatus = CWAV_FILE_OPEN_FAILED;
         goto exit;
+    }
+        
 
-    if (fseek(file, 0, SEEK_END))
+    if (fseek(file, 0, SEEK_END)) {
+        out->loadStatus = CWAV_FILE_OPEN_FAILED;
         goto exitClose;
+    }
+        
     fileSize = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    buffer = linearAlloc(fileSize);
+    buffer = linearAlloc(fileSize); // In the case linearAlloc is not defined, buffer will keep it's NULL value.
     if (!buffer)
-        goto exitClose;
+    {
+        out->loadStatus = CWAV_FILE_READ_FAILED;
+        goto exitClose;   
+    }
 
     if (fread(buffer, 1, fileSize, file) != fileSize)
     {
+        out->loadStatus = CWAV_FILE_READ_FAILED;
         linearFree(buffer);
         goto exitClose;
     }

@@ -19,7 +19,7 @@ typedef enum
 
     // Load status values.
     CWAV_FILE_OPEN_FAILED = 3, ///< Failed to open the specified file.
-    CWAV_FILE_TOO_LARGE = 4, ///< The file is too large to fit in the available memory.
+    CWAV_FILE_READ_FAILED = 4, ///< The file failed to be read into memory.
     CWAV_UNKNOWN_FILE_FORMAT = 5, ///< The specified file is not a valid CWAV file.
     CWAV_INVAID_INFO_BLOCK = 6, ///< The INFO block in the CWAV file is invalid or not supported.
     CWAV_INVAID_DATA_BLOCK = 7, ///< The DATA block in the CWAV file is invalid or not supported.
