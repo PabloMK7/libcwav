@@ -280,8 +280,6 @@ void cwavLoad(CWAV* out, const void* bcwavFileBuffer, u8 maxSPlays)
     out->cwav = cwav;
     memset(cwav, 0, sizeof(cwav_t));
 
-    out->dataBuffer = NULL;
-
     if (bcwavFileBuffer == NULL)
     {
         out->loadStatus = CWAV_INVALID_ARGUMENT;
@@ -340,6 +338,8 @@ void cwavFileLoad(CWAV* out, const char* bcwavFileName, u8 maxSPlays)
 
     if (!out)
         goto exit;
+
+    out->dataBuffer = NULL;
 
     file = fopen(bcwavFileName, "rb");
     if (!file)
