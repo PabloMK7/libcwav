@@ -14,7 +14,7 @@ typedef enum
 {
     // General status values.
     CWAV_NOT_ALLOCATED = 0, ///< CWAV is not allocated and cannot be used.
-    CWAV_SUCCESS = 1, ///< CWAV loaded properly and is ready to play.
+    CWAV_SUCCESS = 1, ///< Operation succeded.
     CWAV_INVALID_ARGUMENT = 2, ///< An invalid argument was passed to the function call.
 
     // Load status values.
@@ -152,7 +152,7 @@ void cwavFileFree(CWAV* cwav);
  * @param cwav The CWAV to play.
  * @param leftChannel The CWAV channel to play on the left ear.
  * @param rigtChannel The CWAV channel to play on the right ear.
- * @param directSoundChannel The direct sound channel to play the sound on. Range [0-3].
+ * @param directSoundChannel The direct sound channel to play the sound on. Range [-3].
  * @param directSoundPrioriy The direct sound priority to use if the specified channel is in use (smaller value -> higher priority). Range [0-31].
  * @param soundModifiers CSND direct sound modifiers to apply to the sound.
  * 
@@ -167,7 +167,7 @@ bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, u32 di
  * @param cwav The CWAV to play.
  * @param leftChannel The CWAV channel to play on the left ear.
  * @param rigtChannel The CWAV channel to play on the right ear.
- * @return True if both channels started playing, false otherwise.
+ * @return A cwavPlayResult struct with the status code and which audio channels were assigned.
  * 
  * To play a single channel in mono for both ears, set rightChannel to -1.
 */
