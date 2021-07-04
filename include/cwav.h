@@ -152,7 +152,7 @@ void cwavFileFree(CWAV* cwav);
  * @param cwav The CWAV to play.
  * @param leftChannel The CWAV channel to play on the left ear.
  * @param rigtChannel The CWAV channel to play on the right ear.
- * @param directSoundChannel The direct sound channel to play the sound on. Range [-3].
+ * @param directSoundChannel The direct sound channel to play the sound on. Range [0-3].
  * @param directSoundPrioriy The direct sound priority to use if the specified channel is in use (smaller value -> higher priority). Range [0-31].
  * @param soundModifiers CSND direct sound modifiers to apply to the sound.
  * 
