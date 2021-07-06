@@ -390,7 +390,7 @@ void cwavFileFree(CWAV* cwav)
         linearFree(cwav->dataBuffer);
 }
 
-#ifdef DIRECT_SOUND_IMPLEMENTED
+#ifdef CWAV_DIRECT_SOUND_IMPLEMENTED
 bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, u32 directSoundChannel, u32 directSoundPriority, CSND_DirectSoundModifiers* soundModifiers)
 {
     if (cwavEnvGetEnvironment() != CWAV_ENV_CSND || !cwav || cwav->loadStatus != CWAV_SUCCESS)
