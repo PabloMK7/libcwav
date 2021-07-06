@@ -3,15 +3,42 @@
 #include <string.h>
 #include <stdlib.h>
 
-static u32 g_currentEnv = CWAV_ENV_DSP;
-static ndspWaveBuf* g_ndspWaveBuffers = NULL;
+#ifdef CWAV_DISABLE_DSP
+#ifdef CWAV_DISABLE_CSND
+#error "Cannot disable DSP and CSND at the same time!"
+#endif
+#endif
 
+#ifdef CWAV_DISABLE_DSP
+#pragma message "DSP service support has been disabled!"
+#endif
+#ifdef CWAV_DISABLE_CSND
+#pragma message "CSND service support has been disabled!"
+#endif
+
+#if !defined CWAV_DISABLE_DSP && defined CWAV_DISABLE_CSND
+static const u32 g_currentEnv = CWAV_ENV_DSP;
+#elif defined CWAV_DISABLE_DSP && !defined CWAV_DISABLE_CSND
+static const u32 g_currentEnv = CWAV_ENV_CSND;
+#else
+static u32 g_currentEnv = CWAV_ENV_DSP;
+#endif
+
+#ifndef CWAV_DISABLE_DSP
+static ndspWaveBuf* g_ndspWaveBuffers = NULL;
+#endif
+
+#ifndef CWAV_DISABLE_CSND
 u32 cwav_defaultVAToPA(const void* addr)
 {
     return osConvertVirtToPhys(addr);
 }
 vaToPaCallback_t cwavCurrentVAPAConvCallback = cwav_defaultVAToPA;
+#else
+vaToPaCallback_t cwavCurrentVAPAConvCallback = NULL;
+#endif
 
+#ifndef CWAV_DISABLE_CSND
 static Result csndPlaySoundFixed(int chn, u32 flags, u32 sampleRate, float vol, float pan, float pitch, void* data0, void* data1, u32 size)
 {
     if (!(csndChannels & BIT(chn)))
@@ -53,10 +80,15 @@ static Result csndPlaySoundFixed(int chn, u32 flags, u32 sampleRate, float vol, 
 
     return csndExecCmds(true);
 }
+#endif
 
 void cwavEnvUseEnvironment(cwavEnvMode_t envMode)
 {
+#ifndef CWAV_DISABLE_CSND
+#ifndef CWAV_DISABLE_DSP
     g_currentEnv = envMode;
+#endif
+#endif
 }
 
 cwavEnvMode_t cwavEnvGetEnvironment()
@@ -66,10 +98,13 @@ cwavEnvMode_t cwavEnvGetEnvironment()
 
 void cwavEnvInitialize()
 {
+
     if (g_currentEnv == CWAV_ENV_DSP)
     {
+#ifndef CWAV_DISABLE_DSP
         g_ndspWaveBuffers = malloc(sizeof(ndspWaveBuf) * 24 * 2);
         memset(g_ndspWaveBuffers, 0, sizeof(ndspWaveBuf) * 24 * 2);
+#endif
     }
 }
 
@@ -77,27 +112,35 @@ void cwavEnvFinalize()
 {
     if (g_currentEnv == CWAV_ENV_DSP)
     {
+#ifndef CWAV_DISABLE_DSP
         if (g_ndspWaveBuffers)
             free(g_ndspWaveBuffers);
         g_ndspWaveBuffers = NULL;
+#endif
     }
 }
 
+#ifndef CWAV_DISABLE_DSP
 static inline ndspWaveBuf* cwavEnvGetNdspWaveBuffer(u32 channel, u32 block)
 {
     return &g_ndspWaveBuffers[channel * 2 + block];
 }
+#endif
 
 bool cwavEnvCompatibleEncoding(cwavEncoding_t encoding)
 {
     if (encoding == PCM8 || encoding == PCM16)
         return true;
 
+#ifndef CWAV_DISABLE_CSND
     if (encoding == IMA_ADPCM && g_currentEnv == CWAV_ENV_CSND)
         return true;
+#endif
 
+#ifndef CWAV_DISABLE_DSP
     if (encoding == DSP_ADPCM && g_currentEnv == CWAV_ENV_DSP)
         return true;
+#endif
 
     return false;
 }
@@ -106,11 +149,15 @@ u32 cwavEnvGetChannelAmount()
 {
     if (g_currentEnv == CWAV_ENV_CSND) 
     {
+#ifndef CWAV_DISABLE_CSND
         return CSND_NUM_CHANNELS;
+#endif
     }
     else if (g_currentEnv == CWAV_ENV_DSP)
     {
+#ifndef CWAV_DISABLE_DSP
         return 24;
+#endif
     }
     return 0;
 }
@@ -119,11 +166,15 @@ bool cwavEnvIsChannelAvailable(u32 channel)
 {
     if (g_currentEnv == CWAV_ENV_CSND) 
     {
+#ifndef CWAV_DISABLE_CSND
         return ((csndChannels >> channel) & 1);
+#endif
     }
     else if (g_currentEnv == CWAV_ENV_DSP)
     {
+#ifndef CWAV_DISABLE_DSP
         return true;
+#endif
     }
     return false;
 }
@@ -132,6 +183,7 @@ void cwavEnvSetADPCMState(cwav_t* cwav, u32 channel)
 {
     if (g_currentEnv == CWAV_ENV_CSND) 
     {
+#ifndef CWAV_DISABLE_CSND
         CSND_SetAdpcmState(cwav->playingChanIds[cwav->currMultiplePlay][channel], 0, cwav->IMAADPCMInfos[channel]->context.data, cwav->IMAADPCMInfos[channel]->context.tableIndex);
 
         if (cwav->cwavInfo->isLooped)
@@ -142,9 +194,11 @@ void cwavEnvSetADPCMState(cwav_t* cwav, u32 channel)
         {
             CSND_SetAdpcmState(cwav->playingChanIds[cwav->currMultiplePlay][channel], 1, cwav->IMAADPCMInfos[channel]->context.data, cwav->IMAADPCMInfos[channel]->context.tableIndex);
         }
+#endif
     }
     else if (g_currentEnv == CWAV_ENV_DSP)
     {
+#ifndef CWAV_DISABLE_DSP
         ndspChnSetAdpcmCoefs(cwav->playingChanIds[cwav->currMultiplePlay][channel], cwav->DSPADPCMInfos[channel]->param.coefs);
 
         ndspWaveBuf* block0Buff = cwavEnvGetNdspWaveBuffer(cwav->playingChanIds[cwav->currMultiplePlay][channel], 0);
@@ -159,6 +213,7 @@ void cwavEnvSetADPCMState(cwav_t* cwav, u32 channel)
         {
             block1Buff->adpcm_data = (ndspAdpcmData*)&cwav->DSPADPCMInfos[channel]->context;
         }
+#endif
     }
 }
 
@@ -166,6 +221,7 @@ void cwavEnvPlay(u32 channel, bool isLooped, cwavEncoding_t encoding, u32 sample
 {
     if (g_currentEnv == CWAV_ENV_CSND)
     {
+#ifndef CWAV_DISABLE_CSND
         u32 encFlag = 0;
         switch (encoding)
         {
@@ -184,9 +240,11 @@ void cwavEnvPlay(u32 channel, bool isLooped, cwavEncoding_t encoding, u32 sample
         
         csndPlaySoundFixed(channel, (isLooped ? SOUND_REPEAT : SOUND_ONE_SHOT) | encFlag, sampleRate, volume, pan, pitch, block0, block1, totalSize);
         csndExecCmds(true);
+#endif
     }
     else if (g_currentEnv == CWAV_ENV_DSP)
     {
+#ifndef CWAV_DISABLE_DSP
         u32 encFlag = 0;
         switch (encoding)
         {
@@ -232,6 +290,7 @@ void cwavEnvPlay(u32 channel, bool isLooped, cwavEncoding_t encoding, u32 sample
         }
 
         ndspChnWaveBufAdd(channel, block1Buff);
+#endif
     }
 }
 
@@ -239,18 +298,22 @@ bool cwavEnvChannelIsPlaying(u32 channel)
 {
     if (g_currentEnv == CWAV_ENV_CSND)
     {
+#ifndef CWAV_DISABLE_CSND
         u8 stat = 0;
         csndIsPlaying(channel, &stat);
         csndExecCmds(true);
         return stat;
+#endif
     }
     else if (g_currentEnv == CWAV_ENV_DSP)
     {
+#ifndef CWAV_DISABLE_DSP
         ndspWaveBuf* block0Buff = cwavEnvGetNdspWaveBuffer(channel, 0);
         ndspWaveBuf* block1Buff = cwavEnvGetNdspWaveBuffer(channel, 1);
 
         return (block0Buff->status == NDSP_WBUF_QUEUED || block0Buff->status == NDSP_WBUF_PLAYING ||
                 block1Buff->status == NDSP_WBUF_QUEUED || block1Buff->status == NDSP_WBUF_PLAYING);
+#endif
     }
     return false;
 }
@@ -259,14 +322,18 @@ void cwavEnvStop(u32 channel)
 {
     if (g_currentEnv == CWAV_ENV_CSND)
     {
+#ifndef CWAV_DISABLE_CSND
         CSND_SetPlayState(channel, 0);
         csndExecCmds(true);
+#endif
     }
     else if (g_currentEnv == CWAV_ENV_DSP)
     {
+#ifndef CWAV_DISABLE_DSP
         ndspChnReset(channel);
         ndspWaveBuf* block0Buff = cwavEnvGetNdspWaveBuffer(channel, 0);
         ndspWaveBuf* block1Buff = cwavEnvGetNdspWaveBuffer(channel, 1);
         block0Buff->status = block1Buff->status = NDSP_WBUF_FREE;
+#endif
     }
 }
