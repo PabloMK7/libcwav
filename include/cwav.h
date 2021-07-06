@@ -145,8 +145,7 @@ void cwavFree(CWAV* cwav);
 */
 void cwavFileFree(CWAV* cwav);
 
-//#define DIRECT_SOUND_IMPLEMENTED
-#ifdef DIRECT_SOUND_IMPLEMENTED
+#ifdef CWAV_DIRECT_SOUND_IMPLEMENTED
 /**
  * @brief Plays the CWAV channels as a direct sound (only available if using CSND).
  * @param cwav The CWAV to play.
