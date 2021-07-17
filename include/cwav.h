@@ -5,6 +5,10 @@
 #pragma once
 #include "3ds.h"
 
+#ifndef CWAV_DISABLE_CSND
+#include "ncsnd.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -73,25 +77,6 @@ typedef u32(*vaToPaCallback_t)(const void*);
 void cwavUseEnvironment(cwavEnvMode_t envMode);
 
 /**
- * @brief Hooks to libctru APT implementation to recieve apt events. (Required only for CSND)
- * 
- * Needs to be used in environments supported by libctru, should not be used with applets nor 3GX game plugins.
- * For unsupported environments, use cwavNotifyAptEvent directly to notify individual events.
- * Either cwavDoAptHook or cwavNotifyAptEvent MUST be used with CSND, otherwise it will cause undefined behaviour.
-*/
-void cwavDoAptHook();
-
-/**
- * @brief Notifies the lib of an incoming apt event. (Required only for CSND)
- * @param event The apt event to notify.
- * 
- * Should be used in environments not supported by libctru, such as applets and 3GX game plugins.
- * For supported environments, use cwavDoAptHook so the the library automatically handles the events.
- * Either cwavDoAptHook or cwavNotifyAptEvent MUST be used with CSND, otherwise it will cause undefined behaviour.
-*/
-void cwavNotifyAptEvent(APT_HookType event);
-
-/**
  * @brief Sets a custom virtual address to physical address conversion callback. (Only used for CSND)
  * @param callback Function callback to use.
  * 
@@ -145,7 +130,7 @@ void cwavFree(CWAV* cwav);
 */
 void cwavFileFree(CWAV* cwav);
 
-#ifdef CWAV_DIRECT_SOUND_IMPLEMENTED
+#ifndef CWAV_DISABLE_CSND
 /**
  * @brief Plays the CWAV channels as a direct sound (only available if using CSND).
  * @param cwav The CWAV to play.
@@ -158,7 +143,7 @@ void cwavFileFree(CWAV* cwav);
  * To play a single channel in mono for both ears, set rightChannel to -1.
  * The individual channel volumes are multiplied by the CWAV volume.
 */
-bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, u32 directSoundChannel, u32 directSoundPriority, CSND_DirectSoundModifiers* soundModifiers);
+bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, u32 directSoundChannel, u32 directSoundPriority, ncsndDirectSoundModifiers* soundModifiers);
 #endif
 
 /**

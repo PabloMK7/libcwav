@@ -9,6 +9,11 @@
 #endif
 #endif
 
+#ifndef CWAV_DISABLE_CSND
+#include "ncsnd.h"
+#define CWAVTOIMPL(c) ((cwav_t*)c->cwav)
+#endif
+
 #ifdef CWAV_DISABLE_DSP
 #pragma message "DSP service support has been disabled!"
 #endif
@@ -36,50 +41,6 @@ u32 cwav_defaultVAToPA(const void* addr)
 vaToPaCallback_t cwavCurrentVAPAConvCallback = cwav_defaultVAToPA;
 #else
 vaToPaCallback_t cwavCurrentVAPAConvCallback = NULL;
-#endif
-
-#ifndef CWAV_DISABLE_CSND
-static Result csndPlaySoundFixed(int chn, u32 flags, u32 sampleRate, float vol, float pan, float pitch, void* data0, void* data1, u32 size)
-{
-    if (!(csndChannels & BIT(chn)))
-        return 1;
-
-    u32 paddr0 = 0, paddr1 = 0;
-
-    int encoding = (flags >> 12) & 3;
-    int loopMode = (flags >> 10) & 3;
-
-    if (!loopMode)
-        flags |= SOUND_ONE_SHOT;
-
-    if (encoding != CSND_ENCODING_PSG)
-    {
-        if (data0)
-            paddr0 = cwavCurrentVAPAConvCallback(data0);
-        if (data1)
-            paddr1 = cwavCurrentVAPAConvCallback(data1);
-    }
-
-    u32 timer = CSND_TIMER((u32)(sampleRate * pitch));
-    if (timer < 0x0042) 
-        timer = 0x0042;
-    else if (timer > 0xFFFF) 
-        timer = 0xFFFF;
-    flags &= ~0xFFFF001F;
-    flags |= SOUND_ENABLE | SOUND_CHANNEL(chn) | (timer << 16);
-
-    u32 volumes = CSND_VOL(vol, pan);
-    CSND_SetChnRegs(flags, paddr0, paddr1, size, volumes, volumes);
-
-    if (loopMode == CSND_LOOPMODE_NORMAL && paddr1 > paddr0)
-    {
-        // Now that the first block is playing, configure the size of the subsequent blocks
-        size -= paddr1 - paddr0;
-        CSND_SetBlock(chn, 1, paddr1, size);
-    }
-
-    return csndExecCmds(true);
-}
 #endif
 
 void cwavEnvUseEnvironment(cwavEnvMode_t envMode)
@@ -150,7 +111,7 @@ u32 cwavEnvGetChannelAmount()
     if (g_currentEnv == CWAV_ENV_CSND) 
     {
 #ifndef CWAV_DISABLE_CSND
-        return CSND_NUM_CHANNELS;
+        return NCSND_NUM_CHANNELS;
 #endif
     }
     else if (g_currentEnv == CWAV_ENV_DSP)
@@ -167,7 +128,7 @@ bool cwavEnvIsChannelAvailable(u32 channel)
     if (g_currentEnv == CWAV_ENV_CSND) 
     {
 #ifndef CWAV_DISABLE_CSND
-        return ((csndChannels >> channel) & 1);
+        return ((ncsndChannels >> channel) & 1);
 #endif
     }
     else if (g_currentEnv == CWAV_ENV_DSP)
@@ -179,73 +140,131 @@ bool cwavEnvIsChannelAvailable(u32 channel)
     return false;
 }
 
-void cwavEnvSetADPCMState(cwav_t* cwav, u32 channel)
-{
-    if (g_currentEnv == CWAV_ENV_CSND) 
-    {
 #ifndef CWAV_DISABLE_CSND
-        CSND_SetAdpcmState(cwav->playingChanIds[cwav->currMultiplePlay][channel], 0, cwav->IMAADPCMInfos[channel]->context.data, cwav->IMAADPCMInfos[channel]->context.tableIndex);
+bool cwavEnvPlayDirectSound(CWAV* cwav, int leftChannel, int rightChannel, u32 directSoundChannel, u32 directSoundPriority, ncsndDirectSoundModifiers* soundModifiers)
+{
+    cwav_t* cwav_ = CWAVTOIMPL(cwav);
+    ncsndDirectSound dirSound;
 
-        if (cwav->cwavInfo->isLooped)
-        {
-            CSND_SetAdpcmState(cwav->playingChanIds[cwav->currMultiplePlay][channel], 1, cwav->IMAADPCMInfos[channel]->loopContext.data, cwav->IMAADPCMInfos[channel]->loopContext.tableIndex);
-        }
-        else
-        {
-            CSND_SetAdpcmState(cwav->playingChanIds[cwav->currMultiplePlay][channel], 1, cwav->IMAADPCMInfos[channel]->context.data, cwav->IMAADPCMInfos[channel]->context.tableIndex);
-        }
-#endif
-    }
-    else if (g_currentEnv == CWAV_ENV_DSP)
+    ncsndInitializeDirectSound(&dirSound);
+
+    u32 channelCount = 0;
+    if (leftChannel >= 0 && leftChannel < (int)cwav_->channelcount && rightChannel >= 0 && rightChannel < (int)cwav_->channelcount)
+        channelCount = 2;
+    else if (leftChannel >= 0 && leftChannel < (int)cwav_->channelcount)
+        channelCount = 1;
+    else
+        return false;
+    
+    u32 encoding = cwav_->cwavInfo->encoding;
+    u32 encFlag = 0;
+    u32 size = 0;
+    if (cwav_->cwavInfo->isLooped)
+        return false;
+    
+    u8* leftSampleData = (u8*)((u32)cwav_->channelInfos[leftChannel]->samples.offset + (u8*)(&(cwav_->cwavData->data)));
+    u8* rightSampleData = 0;
+    if (channelCount == 2)
+        rightSampleData = (u8*)((u32)cwav_->channelInfos[rightChannel]->samples.offset + (u8*)(&(cwav_->cwavData->data)));
+
+    switch (encoding)
     {
-#ifndef CWAV_DISABLE_DSP
-        ndspChnSetAdpcmCoefs(cwav->playingChanIds[cwav->currMultiplePlay][channel], cwav->DSPADPCMInfos[channel]->param.coefs);
+    case IMA_ADPCM:
+        encFlag = NCSND_ENCODING_ADPCM;
+        size = (cwav_->cwavInfo->LoopEnd / 2);
 
-        ndspWaveBuf* block0Buff = cwavEnvGetNdspWaveBuffer(cwav->playingChanIds[cwav->currMultiplePlay][channel], 0);
-        ndspWaveBuf* block1Buff = cwavEnvGetNdspWaveBuffer(cwav->playingChanIds[cwav->currMultiplePlay][channel], 1);      
-
-        if (cwav->cwavInfo->isLooped)
-        {
-            block0Buff->adpcm_data = (ndspAdpcmData*)&cwav->DSPADPCMInfos[channel]->context;
-            block1Buff->adpcm_data = (ndspAdpcmData*)&cwav->DSPADPCMInfos[channel]->loopContext;
-        }
-        else
-        {
-            block1Buff->adpcm_data = (ndspAdpcmData*)&cwav->DSPADPCMInfos[channel]->context;
-        }
-#endif
+        memcpy(&dirSound.channelData.leftAdpcmContext, &cwav_->IMAADPCMInfos[leftChannel]->context, sizeof(ncsndADPCMContext));
+        if (channelCount == 2)
+            memcpy(&dirSound.channelData.rightAdpcmContext, &cwav_->IMAADPCMInfos[rightChannel]->context, sizeof(ncsndADPCMContext));
+        
+        break;
+    case PCM8:
+        encFlag = NCSND_ENCODING_PCM8;
+        size = (cwav_->cwavInfo->LoopEnd);
+        break;
+    case PCM16:
+        encFlag = NCSND_ENCODING_PCM16;
+        size = (cwav_->cwavInfo->LoopEnd * 2);
+        break;
+    default:
+        break;
     }
-}
 
-void cwavEnvPlay(u32 channel, bool isLooped, cwavEncoding_t encoding, u32 sampleRate, float volume, float pan, float pitch, void* block0, void* block1, u32 loopStart, u32 loopEnd, u32 totalSize)
+    soundModifiers->channelVolumes[0] = soundModifiers->channelVolumes[0] * cwav->volume;
+    soundModifiers->channelVolumes[1] = soundModifiers->channelVolumes[1] * cwav->volume;
+
+    memcpy(&dirSound.soundModifiers, soundModifiers, sizeof(ncsndDirectSoundModifiers));
+
+    dirSound.channelData.channelAmount = channelCount;
+    dirSound.channelData.channelEncoding = encFlag;
+    dirSound.channelData.sampleRate = cwav_->cwavInfo->sampleRate;
+    dirSound.channelData.sampleDataLength = size;
+    dirSound.channelData.isLeftPhys = true;
+    dirSound.channelData.isRightPhys = true;
+    if (leftSampleData)
+        dirSound.channelData.leftSampleData = (void*)cwavCurrentVAPAConvCallback(leftSampleData);
+    if (rightSampleData)
+        dirSound.channelData.rightSampleData = (void*)cwavCurrentVAPAConvCallback(rightSampleData);
+
+    return R_SUCCEEDED(ncsndPlayDirectSound(directSoundChannel, directSoundPriority, &dirSound));
+}
+#endif
+
+void cwavEnvPlay(u32 channel, bool isLooped, cwavEncoding_t encoding, u32 sampleRate, float volume, float pan, float pitch, void* block0, void* block1, u32 loopStart, u32 loopEnd, u32 totalSize, cwavIMAADPCMInfo_t* IMAADPCMInfos, cwavDSPADPCMInfo_t* DSPADPCMInfos)
 {
     if (g_currentEnv == CWAV_ENV_CSND)
     {
 #ifndef CWAV_DISABLE_CSND
-        u32 encFlag = 0;
+        ncsndSound sound;
+        ncsndInitializeSound(&sound);
+
         switch (encoding)
         {
         case PCM8:
-            encFlag = SOUND_FORMAT_8BIT;
+            sound.encoding = NCSND_ENCODING_PCM8;
             break;
         case PCM16:
-            encFlag = SOUND_FORMAT_16BIT;
+            sound.encoding = NCSND_ENCODING_PCM16;
             break;
         case IMA_ADPCM:
-            encFlag = SOUND_FORMAT_ADPCM;
+            sound.encoding = NCSND_ENCODING_ADPCM;
+
+            sound.context.data = IMAADPCMInfos->context.data;
+            sound.context.tableIndex = IMAADPCMInfos->context.tableIndex;
+            sound.loopContext.data = IMAADPCMInfos->loopContext.data;
+            sound.loopContext.tableIndex = IMAADPCMInfos->loopContext.tableIndex;
+
             break;
         default:
             break;
         }
-        
-        csndPlaySoundFixed(channel, (isLooped ? SOUND_REPEAT : SOUND_ONE_SHOT) | encFlag, sampleRate, volume, pan, pitch, block0, block1, totalSize);
-        csndExecCmds(true);
+
+        sound.isPhysAddr = true;
+        sound.sampleData = (void*)cwavCurrentVAPAConvCallback(block0);
+        if (isLooped) {
+            sound.loopSampleData = (void*)cwavCurrentVAPAConvCallback(block1);
+        } else {
+            sound.loopSampleData = sound.sampleData;
+        }
+        sound.totalSizeBytes = totalSize;
+
+        sound.loopPlayback = isLooped;
+        sound.sampleRate = sampleRate;
+        sound.volume = volume;
+        sound.pitch = pitch;
+        sound.pan = pan;
+
+        ncsndPlaySound(channel, &sound);
 #endif
     }
     else if (g_currentEnv == CWAV_ENV_DSP)
     {
 #ifndef CWAV_DISABLE_DSP
         u32 encFlag = 0;
+
+        ndspWaveBuf* block0Buff = cwavEnvGetNdspWaveBuffer(channel, 0);
+        ndspWaveBuf* block1Buff = cwavEnvGetNdspWaveBuffer(channel, 1);
+
         switch (encoding)
         {
         case PCM8:
@@ -256,13 +275,23 @@ void cwavEnvPlay(u32 channel, bool isLooped, cwavEncoding_t encoding, u32 sample
             break;
         case DSP_ADPCM:
             encFlag = NDSP_FORMAT_ADPCM;
+
+            ndspChnSetAdpcmCoefs(channel, DSPADPCMInfos->param.coefs);
+
+            if (isLooped)
+            {
+                block0Buff->adpcm_data = (ndspAdpcmData*)&DSPADPCMInfos->context;
+                block1Buff->adpcm_data = (ndspAdpcmData*)&DSPADPCMInfos->loopContext;
+            }
+            else
+            {
+                block1Buff->adpcm_data = (ndspAdpcmData*)&DSPADPCMInfos->context;
+            }
+
             break;
         default:
             break;
         }
-
-        ndspWaveBuf* block0Buff = cwavEnvGetNdspWaveBuffer(channel, 0);
-        ndspWaveBuf* block1Buff = cwavEnvGetNdspWaveBuffer(channel, 1);
 
         float mix[12] = {0};
         float rightPan = (pan + 1.f) / 2.f;
@@ -299,10 +328,7 @@ bool cwavEnvChannelIsPlaying(u32 channel)
     if (g_currentEnv == CWAV_ENV_CSND)
     {
 #ifndef CWAV_DISABLE_CSND
-        u8 stat = 0;
-        csndIsPlaying(channel, &stat);
-        csndExecCmds(true);
-        return stat;
+        return ncsndIsPlaying(channel);
 #endif
     }
     else if (g_currentEnv == CWAV_ENV_DSP)
@@ -323,8 +349,7 @@ void cwavEnvStop(u32 channel)
     if (g_currentEnv == CWAV_ENV_CSND)
     {
 #ifndef CWAV_DISABLE_CSND
-        CSND_SetPlayState(channel, 0);
-        csndExecCmds(true);
+        ncsndStopSound(channel);
 #endif
     }
     else if (g_currentEnv == CWAV_ENV_DSP)

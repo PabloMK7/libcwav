@@ -225,43 +225,6 @@ void cwavUseEnvironment(cwavEnvMode_t envMode)
     cwavEnvUseEnvironment(envMode);
 }
 
-static void cwav_libAptHook(APT_HookType hook, void* param)
-{
-    cwavNotifyAptEvent(hook);
-}
-
-void cwavDoAptHook()
-{
-    if (cwavEnvGetEnvironment() == CWAV_ENV_DSP)
-        return;
-    
-    static aptHookCookie cookie;
-    static bool hooked = false;
-    if (!hooked)
-    {
-        aptHook(&cookie, cwav_libAptHook, NULL);
-        hooked = true;
-    }
-}
-
-void cwavNotifyAptEvent(APT_HookType event)
-{
-    if (cwavEnvGetEnvironment() == CWAV_ENV_DSP)
-        return;
-    
-    switch (event)
-    {
-    case APTHOOK_ONSUSPEND:
-    case APTHOOK_ONEXIT:
-    case APTHOOK_ONSLEEP:
-        for (int i = 0; i < cwavListCount && cwavList[i] != NULL; i++)
-            cwavStop(cwavList[i], -1, -1);
-        break;
-    default:
-        break;
-    }
-}
-
 void cwavSetVAToPACallback(vaToPaCallback_t callback)
 {
     if (cwavEnvGetEnvironment() == CWAV_ENV_DSP)
@@ -390,74 +353,13 @@ void cwavFileFree(CWAV* cwav)
         linearFree(cwav->dataBuffer);
 }
 
-#ifdef CWAV_DIRECT_SOUND_IMPLEMENTED
-bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, u32 directSoundChannel, u32 directSoundPriority, CSND_DirectSoundModifiers* soundModifiers)
+#ifndef CWAV_DISABLE_CSND
+bool cwavPlayAsDirectSound(CWAV* cwav, int leftChannel, int rightChannel, u32 directSoundChannel, u32 directSoundPriority, ncsndDirectSoundModifiers* soundModifiers)
 {
     if (cwavEnvGetEnvironment() != CWAV_ENV_CSND || !cwav || cwav->loadStatus != CWAV_SUCCESS)
         return false;
     
-    cwav_t* cwav_ = CWAVTOIMPL(cwav);
-    CSND_DirectSound dirSound;
-
-    csndInitializeDirectSound(&dirSound);
-
-    u32 channelCount = 0;
-    if (leftChannel >= 0 && leftChannel < (int)cwav_->channelcount && rightChannel >= 0 && rightChannel < (int)cwav_->channelcount)
-        channelCount = 2;
-    else if (leftChannel >= 0 && leftChannel < (int)cwav_->channelcount)
-        channelCount = 1;
-    else
-        return false;
-    
-    u32 encoding = cwav_->cwavInfo->encoding;
-    u32 encFlag = 0;
-    u32 size = 0;
-    if (cwav_->cwavInfo->isLooped)
-        return false;
-    
-    u8* leftSampleData = (u8*)((u32)cwav_->channelInfos[leftChannel]->samples.offset + (u8*)(&(cwav_->cwavData->data)));
-    u8* rightSampleData = 0;
-    if (channelCount == 2)
-        rightSampleData = (u8*)((u32)cwav_->channelInfos[rightChannel]->samples.offset + (u8*)(&(cwav_->cwavData->data)));
-
-    switch (encoding)
-    {
-    case IMA_ADPCM:
-        encFlag = CSND_ENCODING_ADPCM;
-        size = (cwav_->cwavInfo->LoopEnd / 2);
-
-        memcpy(&dirSound.channelData.adpcmContext[0], &cwav_->IMAADPCMInfos[leftChannel]->context, sizeof(CSND_DirectSoundIMAADPCMContext));
-        if (channelCount == 2)
-            memcpy(&dirSound.channelData.adpcmContext[1], &cwav_->IMAADPCMInfos[rightChannel]->context, sizeof(CSND_DirectSoundIMAADPCMContext));
-        
-        break;
-    case PCM8:
-        encFlag = CSND_ENCODING_PCM8;
-        size = (cwav_->cwavInfo->LoopEnd);
-        break;
-    case PCM16:
-        encFlag = CSND_ENCODING_PCM16;
-        size = (cwav_->cwavInfo->LoopEnd * 2);
-        break;
-    default:
-        break;
-    }
-
-    soundModifiers->channelVolumes[0] = soundModifiers->channelVolumes[0] * cwav->volume;
-    soundModifiers->channelVolumes[1] = soundModifiers->channelVolumes[1] * cwav->volume;
-
-    memcpy(&dirSound.soundModifiers, soundModifiers, sizeof(CSND_DirectSoundModifiers));
-
-    dirSound.channelData.channelAmount = channelCount;
-    dirSound.channelData.channelEncoding = encFlag;
-    dirSound.channelData.sampleRate = cwav_->cwavInfo->sampleRate;
-    dirSound.channelData.sampleDataLength = size;
-    if (leftSampleData)
-        dirSound.channelData.sampleData[0] = (void*)cwavCurrentVAPAConvCallback(leftSampleData);
-    if (rightSampleData)
-        dirSound.channelData.sampleData[1] = (void*)cwavCurrentVAPAConvCallback(rightSampleData);
-
-    return R_SUCCEEDED(csndPlayDirectSound(&dirSound, directSoundChannel, directSoundPriority, false));
+    return cwavEnvPlayDirectSound(cwav, leftChannel, rightChannel, directSoundChannel, directSoundPriority, soundModifiers);
 }
 #endif
 
@@ -499,7 +401,7 @@ cwavPlayResult cwavPlay(CWAV* cwav, int leftChannel, int rightChannel)
         u32 totChanAm = cwavEnvGetChannelAmount();
         for (int j = 0; j < totChanAm; j++)
         {
-            if (!cwavEnvIsChannelAvailable(j) || cwavEnvChannelIsPlaying(j) || j == prevchan) 
+            if (!cwavEnvIsChannelAvailable(j) || j == prevchan || cwavEnvChannelIsPlaying(j)) 
                 continue;
             cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel] = j;
             break;
@@ -516,6 +418,8 @@ cwavPlayResult cwavPlay(CWAV* cwav, int leftChannel, int rightChannel)
         u8* block1 = NULL;
         u32 size = 0;
         u32 encoding = cwav_->cwavInfo->encoding;
+        cwavIMAADPCMInfo_t* IMAADPCMInfos = NULL;
+        cwavDSPADPCMInfo_t* DSPADPCMInfos = NULL;
 
         block0 = (u8*)((u32)cwav_->channelInfos[i ? rightChannel : leftChannel]->samples.offset + (u8*)(&(cwav_->cwavData->data)));
 
@@ -532,7 +436,7 @@ cwavPlayResult cwavPlay(CWAV* cwav, int leftChannel, int rightChannel)
                 block1 = block0;
             }
 
-            cwavEnvSetADPCMState(cwav_, i ? rightChannel : leftChannel);
+            DSPADPCMInfos = cwav_->DSPADPCMInfos[i ? rightChannel : leftChannel];
 
             break;
         case IMA_ADPCM:
@@ -546,7 +450,7 @@ cwavPlayResult cwavPlay(CWAV* cwav, int leftChannel, int rightChannel)
                 block1 = block0;
             }
 
-            cwavEnvSetADPCMState(cwav_, i ? rightChannel : leftChannel);
+            IMAADPCMInfos = cwav_->IMAADPCMInfos[i ? rightChannel : leftChannel];
 
             break;
         case PCM8:
@@ -596,7 +500,7 @@ cwavPlayResult cwavPlay(CWAV* cwav, int leftChannel, int rightChannel)
             pan = cwav->monoPan;
         }
         
-        cwavEnvPlay(cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel], cwav_->cwavInfo->isLooped, encoding, cwav_->cwavInfo->sampleRate, volume, pan, pitch, block0, block1, cwav_->cwavInfo->loopStart, cwav_->cwavInfo->LoopEnd, size);
+        cwavEnvPlay(cwav_->playingChanIds[cwav_->currMultiplePlay][i ? rightChannel : leftChannel], cwav_->cwavInfo->isLooped, encoding, cwav_->cwavInfo->sampleRate, volume, pan, pitch, block0, block1, cwav_->cwavInfo->loopStart, cwav_->cwavInfo->LoopEnd, size, IMAADPCMInfos, DSPADPCMInfos);
         if (!i)
         {
             ret.monoLeftChannel = cwav_->playingChanIds[cwav_->currMultiplePlay][leftChannel];

@@ -6,6 +6,7 @@
 #include <tuple>
 
 #include <cwav.h>
+#include <ncsnd.h>
 
 void updateScreens()
 {
@@ -172,8 +173,7 @@ int main(int argc, char **argv)
 		cwavUseEnvironment(mode);
 	if (!exit && mode == CWAV_ENV_CSND)
 	{
-		csndInit();
-		cwavDoAptHook();
+		ncsndInit(true);
 	}
 	else if (!exit && mode == CWAV_ENV_DSP)
 	{
@@ -195,7 +195,7 @@ int main(int argc, char **argv)
 			if (changed)
 			{
 				consoleClear();
-				printf("libcwav example.\n\n|%s| %s\n\nPress A to play the selected sound.\nPress UP/DOWN to change the file.\nPress B to stop the selected file.\n\nPress START to exit.\n\nPlaying channels:\n", statusStr[cwavStatus[currsound]], std::get<0>(cwavList[currsound]).c_str());
+				printf("libcwav example.\n\n|%s| %s\n\nPress A to play the selected sound.\nPress UP/DOWN to change the file.\nPress B to stop the selected file.%s\n\nPress START to exit.\n\nPlaying channels:\n", statusStr[cwavStatus[currsound]], std::get<0>(cwavList[currsound]).c_str(), mode == CWAV_ENV_CSND ? "\nPress Y to play as direct sound." : "");
 				print_u32_binary(cwavGetEnvironmentPlayingChannels());
 				changed = false;
 			}
@@ -236,15 +236,14 @@ int main(int argc, char **argv)
 					cwavStatus[currsound] = 1;
 				changed = true;
 			}
-			#ifdef DIRECT_SOUND_IMPLEMENTED
 			if (mode == CWAV_ENV_CSND && (kdown & KEY_Y))
 			{
-				CSND_DirectSound dirSound;
-				csndInitializeDirectSound(&dirSound);
+				ncsndDirectSound dirSound;
+				ncsndInitializeDirectSound(&dirSound);
 
-				//dirSound.soundModifiers.forceSpeakerOutput = 1;
-				//dirSound.soundModifiers.ignoreVolumeSlider = 1;
-				dirSound.soundModifiers.playOnSleep = 1;
+				dirSound.soundModifiers.forceSpeakerOutput = 1;
+				dirSound.soundModifiers.ignoreVolumeSlider = 1;
+				//dirSound.soundModifiers.playOnSleep = 1;
 
 				CWAV* cwav = std::get<1>(cwavList[currsound]);
 				if (cwav->numChannels == 2)
@@ -256,7 +255,6 @@ int main(int argc, char **argv)
 					cwavPlayAsDirectSound(cwav, 0, -1, 0, 0, &dirSound.soundModifiers);
 				}
 			}
-			#endif
 			if (kdown & KEY_B)
 			{
 				CWAV* cwav = std::get<1>(cwavList[currsound]);
@@ -281,7 +279,7 @@ int main(int argc, char **argv)
 	freeCwavList();
 	romfsExit();
 	if (!exit && mode == CWAV_ENV_CSND)
-		csndExit();
+		ncsndExit();
 	else if (!exit && mode == CWAV_ENV_DSP)
 		ndspExit();
 	gfxExit();
