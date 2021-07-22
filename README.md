@@ -30,14 +30,17 @@ This system service is used by *applets* to play audio. It has the advantage of 
 Use this system service if you want to play audio in *applets* or *3GX game plugins*. Make sure to use *`cwavDoAptHook()`* or *`cwavNotifyAptEvent()`* to handle apt events (app suspend, sleep or exit)!
 
 # Installation and Usage
-1. Make sure you have [devkitpro](https://devkitpro.org/wiki/Getting_Started) installed and working.
-2. Clone or download the repo and open a command prompt.
-3. Run `make install` and confirm there aren't any errors.
-4. In your project makefile, add the following to the `LIBDIRS` line (or similar): `$(DEVKITPRO)/libcwav`
-5. In your project makefile, add the following to the `LIBS` line (or similar): `-lcwav` if the already listed libraries start with `-l` or just `cwav` if they don't.
-6. Add `#include "cwav.h"` and/or `#include "cwav_file.h"` in your source files to use the library.
 
-You can check all the available function calls in the documentation provided in [cwav.h](include/cwav.h) and [cwav_file.h](include/cwav_file.h). Also, you can see an example application in [example_libcwav](example_libcwav).
+This library requires [libncsnd](https://github.com/mariohackandglitch/libncsnd). By following these steps *libncsnd* will be installed as well.
+
+1. Make sure you have [devkitpro](https://devkitpro.org/wiki/Getting_Started) installed and working.
+2. Clone or download the repo recursively (use the --recursive option) and open a command prompt.
+3. Run `make install` and confirm there aren't any errors.
+4. In your project makefile, add the following to the `LIBDIRS` line (or similar): `$(DEVKITPRO)/libcwav $(DEVKITPRO)/libncsnd`
+5. In your project makefile, add the following to the `LIBS` line (or similar): `-lcwav -lncsnd` if the already listed libraries start with `-l` or just `cwav ncsnd` if they don't.
+6. Add `#include "cwav.h"` in your source files to use the library.
+
+You can check all the available function calls in the documentation provided in [cwav.h](include/cwav.h). Also, you can see an example application in [example_libcwav](example_libcwav).
 
 # Creating (b)cwav files
 You can use [cwavtool](https://github.com/mariohackandglitch/cwavtool) to create **(b)cwav** files from other audio formats. It supports all possible encodings and loop points.

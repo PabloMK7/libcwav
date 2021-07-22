@@ -39,7 +39,7 @@ ASFLAGS	:=	-g $(ARCH)
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:=	$(CTRULIB) $(DEVKITPRO)/libncsnd
+LIBDIRS	:=	$(CTRULIB) $(CURDIR)/libncsnd
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
@@ -98,6 +98,7 @@ $(BUILD): lib
 
 #---------------------------------------------------------------------------------
 install: all
+	@cd libncsnd && $(MAKE) install && cd ..
 	@mkdir -p $(LIBCWAVDIR)/include $(LIBCWAVDIR)/lib
 	@cp $(OUTPUT) $(LIBCWAVDIR)/lib/libcwav.a
 	@cp $(CURDIR)/include/cwav.h $(LIBCWAVDIR)/include

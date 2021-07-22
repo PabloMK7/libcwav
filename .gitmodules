@@ -1,0 +1,3 @@
+[submodule "libncsnd"]
+	path = libncsnd
+	url = https://github.com/mariohackandglitch/libncsnd.git
