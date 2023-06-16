@@ -3,6 +3,7 @@
 #include "math.h"
 #include <vector>
 #include <string>
+#include <cstring>
 #include <tuple>
 
 #include <cwav.h>
@@ -124,6 +125,40 @@ void freeCwavList()
 	}
 }
 
+void printCitraInfo() {
+    s64 output = 0;
+    svcGetSystemInfo(&output, 0x20000, 0);
+    printf("Running on:\n");
+    if (output) {
+        char name[8], version[8], date[4][8], branch[2][8], desc[2][8];
+        svcGetSystemInfo(&output, 0x20000, 10);
+        memcpy(name, &output, 8);
+        svcGetSystemInfo(&output, 0x20000, 11);
+        memcpy(version, &output, 8);
+        svcGetSystemInfo(&output, 0x20000, 20);
+        memcpy(date[0], &output, 8);
+        svcGetSystemInfo(&output, 0x20000, 21);
+        memcpy(date[1], &output, 8);
+        svcGetSystemInfo(&output, 0x20000, 22);
+        memcpy(date[2], &output, 8);
+        svcGetSystemInfo(&output, 0x20000, 23);
+        memcpy(date[3], &output, 8);
+        svcGetSystemInfo(&output, 0x20000, 30);
+        memcpy(branch[0], &output, 8);
+        svcGetSystemInfo(&output, 0x20000, 31);
+        memcpy(branch[1], &output, 8);
+        svcGetSystemInfo(&output, 0x20000, 40);
+        memcpy(desc[0], &output, 8);
+        svcGetSystemInfo(&output, 0x20000, 41);
+        memcpy(desc[1], &output, 8);
+        
+
+        printf("Citra %s %s\nBuild: %s%s%s%s | %s%s-%s%s", name, version, date[0], date[1], date[2], date[3], branch[0], branch[1], desc[0], desc[1]);
+    } else {
+        printf("Nintendo 3DS");
+    }
+}
+
 int main(int argc, char **argv)
 {
 	const char* statusStr[] = {"II", "I>"};
@@ -145,7 +180,8 @@ int main(int argc, char **argv)
 		if (changed)
 		{
 			consoleClear();
-			printf("libcwav example.\n\nPress X to use: CSND.\nPress Y to use: DSP.\n\nPress START to exit.");
+			printf("libcwav example.\n\nPress X to use: CSND.\nPress Y to use: DSP.\n\nPress START to exit.\n\n");
+            printCitraInfo();
 			changed = false;
 		}
 		hidScanInput();
