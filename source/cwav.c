@@ -296,6 +296,14 @@ void  __cwav__weak linearFree(void* mem);
 void cwavFileLoad(CWAV* out, const char* bcwavFileName, u8 maxSPlays)
 {
     FILE* file = NULL;
+    cwavFileObjectLoad(out, file = fopen(bcwavFileName, "rb"), maxSPlays);
+    if (file)
+        fclose(file);
+    return;
+}
+
+void cwavFileObjectLoad(CWAV* out, FILE* bcwavFileObject, u8 maxSPlays) {
+    FILE* file = bcwavFileObject;
     size_t fileSize = 0;
     void* buffer = NULL;
 
@@ -304,7 +312,6 @@ void cwavFileLoad(CWAV* out, const char* bcwavFileName, u8 maxSPlays)
 
     out->dataBuffer = NULL;
 
-    file = fopen(bcwavFileName, "rb");
     if (!file)
     {
         out->loadStatus = CWAV_FILE_OPEN_FAILED;
@@ -313,7 +320,7 @@ void cwavFileLoad(CWAV* out, const char* bcwavFileName, u8 maxSPlays)
 
     if (fseek(file, 0, SEEK_END)) {
         out->loadStatus = CWAV_FILE_OPEN_FAILED;
-        goto exitClose;
+        goto exit;
     }
         
     fileSize = ftell(file);
@@ -323,21 +330,19 @@ void cwavFileLoad(CWAV* out, const char* bcwavFileName, u8 maxSPlays)
     if (!buffer)
     {
         out->loadStatus = CWAV_FILE_READ_FAILED;
-        goto exitClose;   
+        goto exit;   
     }
 
     if (fread(buffer, 1, fileSize, file) != fileSize)
     {
         out->loadStatus = CWAV_FILE_READ_FAILED;
         linearFree(buffer);
-        goto exitClose;
+        goto exit;
     }
 
     cwavLoad(out, buffer, maxSPlays);
     out->dataBuffer = buffer;
 
-exitClose:
-    fclose(file);
 exit:
     return;
 }

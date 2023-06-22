@@ -54,7 +54,7 @@ typedef struct cwavPlayResult_s
 typedef struct CWAV_s
 {
     void*           cwav;           ///< Pointer to internal cwav data, should not be used.
-    void*           dataBuffer;     ///< [RW] Pointer to the buffer where the CWAV was loaded (used by cwavFileLoad and cwavFileFree). Otherwise, can be used by the user to store the allocation address (ignored by the library).
+    void*           dataBuffer;     ///< [RW] Pointer to the buffer where the CWAV was loaded (used by cwav file load and free functions). Otherwise, can be used by the user to store the allocation address (ignored by the library).
     cwavStatus_t    loadStatus;     ///< [R] Value from the cwavStatus_t enum. Set when the CWAV is loaded. 
     float           monoPan;        ///< [RW] Value in the range [-1.0, 1.0]. -1.0 for left ear and 1.0 for right ear. Only used if played in mono. Default: 0.0
     float           volume;         ///< [RW] Value in the range [0.0, 1.0]. 0.0 muted and 1.0 full volume. Default: 1.0
@@ -109,6 +109,20 @@ void cwavLoad(CWAV* out, const void* bcwavFileBuffer, u8 maxSPlays);
  * This function does not work with 3GX plugins.
  */
 void cwavFileLoad(CWAV* out, const char* bcwavFileName, u8 maxSPlays);
+
+/**
+ * @brief Loads a CWAV from the file object.
+ * @param bcwavFileObject FILE object obtained with fopen. Must have read permissions.
+ * @param maxSPlays Amount of times this CWAV can be played simultaneously (should be >0).
+ * 
+ * Use the loadStatus struct member to determine if the load was successful.
+ * Wether the load was successful or not, cwavFileFree must be always called to clean up and free the memory.
+ * Do not use cwavFree, as it will not properly free the bcwav buffer.
+ * Once this function is used, you can call fclose on the FILE object.
+ * 
+ * This function does not work with 3GX plugins.
+ */
+void cwavFileObjectLoad(CWAV* out, FILE* bcwavFileObject, u8 maxSPlays);
 
 /**
  * @brief Frees the CWAV.
