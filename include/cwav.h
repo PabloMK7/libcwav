@@ -4,6 +4,7 @@
 */
 #pragma once
 #include "3ds.h"
+#include "stdio.h"
 
 #ifndef CWAV_DISABLE_CSND
 #include "ncsnd.h"
